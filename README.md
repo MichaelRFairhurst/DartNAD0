@@ -1,0 +1,301 @@
+# Dart expectiminimax implementation
+
+A version of minimax that allows for random events, coded in dart.
+
+Note that expectiminimax is often much slower than minimax as it does not
+support alpha/beta pruning. In the future I would like to parallelize this,
+etc., and support parallelized MCTS.
+
+This has also not been hyper optimized.
+
+Use for your own fun!
+
+## Usage
+
+First we define how the game moves and progresses.
+
+### Game definition
+
+Create your `Game`. This should generally be an immutable object.
+
+```dart
+class DiceBattle extends Game<DiceBattle> {
+  DiceBattle({
+    required this.p1Turn,
+    required this.p1Score,
+    required this.p1DiceScore,
+    required this.p2Score,
+    required this.p2DiceScore,
+  });
+
+  final bool p1Turn;
+  final int p1Score;
+  final int p1DiceScore;
+  final int p2Score;
+  final int p2DiceScore;
+
+  // ...
+```
+
+Define the `Move`s for your game:
+
+```dart
+class DiceBattle extends Game<DiceBattle> {
+  // ...
+  @override
+  List<Move<DiceBattle>> getMoves() {
+    return [
+	  // ...
+	  Invest(),
+	  // ...
+	];
+  }
+  // ...
+}
+
+class Invest implements Move<DiceBattle> {
+  const Invest();
+
+  @override
+  String get description => 'invest';
+
+  @override
+  Chance<DiceBattle> perform(DiceBattle game) {
+    // TODO: implement this
+  }
+}
+```
+
+And define how a game state is scored, and whether the engine should max or min
+that score. In general, the score should be a positive when player 1 is winning
+and negative when player 1 is winning. In this case, the game is maxing on
+player 1's turn and minning on player 2's turn.
+
+```dart
+class DiceBattle extends Game<DiceBattle> {
+  // ...
+
+  @override
+  double get score {
+    if (p1Score >= winningScore) {
+      return 1.0;
+    } else if (p2Score >= winningScore) {
+      return -1.0;
+    }
+
+    return (p1Score - p2Score) / winningScore;
+  }
+
+  @override
+  bool get isMaxing => p1Turn;
+
+  // ...
+}
+```
+
+It is a good idea to cap the score inside a range of winning and losing scores,
+such as `1.0` and `-1.0`, as shown here. Note that these should be finite
+values, or else the expectiminimax function will not work correctly.
+
+You may implement any heuristic to compute a score. The algorithm will seek to
+minimize and maximize this score. A simple heuristic can often be less likely to
+reward poor play, but requires more search depth to accurately evaluate a
+player's position.
+
+Now we must implement our `Move` class behavior.
+
+### Chance, Dice, Etc
+
+All moves return a `Chance` object which represent the various probabilistic
+outcomes from a player action.
+
+When a `Move` is deterministic (as opposed to probabilistic), you can use the
+constructor `Chance.just(x)` to declare that the game progresses to a single,
+certain state.
+
+```
+class ScoreOnePoint implements Move<DiceBattle> {
+  const ScoreOnePoint();
+
+  @override
+  String get description => 'score one point';
+
+  @override
+  Chance<DiceBattle> perform(DiceBattle game) {
+    return Chance<DiceBattle>.just(game.copyWith(
+      p1Turn: !game.p1Turn,
+      p1Score: game.p1Turn ? game.p1Score + 1 : null,
+      p2Score: game.p1Turn ? null : game.p2Score  + 1,
+    ));
+  }
+}
+```
+
+But `Chance` events don't have to contain a game state, they can contain any
+type. This is useful as the chance types can be manipulated. For example, let's
+look at the built in `Dice` helpers.
+
+```dart
+final roll = Roll(); // cache this for performance.
+
+class RollToScore implements Move<DiceBattle> {
+  const RollToScore();
+
+  @override
+  String get description => 'roll to score';
+
+  @override
+  Chance<DiceBattle> perform(DiceBattle game) {
+	// r1d6 is a constant equal to Dice(sides: 6, rolls: 1)
+	final Chance<int> rollChance = roll.roll(r1d6);
+
+    return rollChance.map((result) => game.copyWith(
+      p1Turn: !game.p1Turn,
+      p1Score: game.p1Turn ? game.p1Score + result : null,
+      p2Score: game.p1Turn ? null : game.p2Score  + result,
+    ));
+  }
+}
+```
+
+This example rolls a 1d6 to generate a `Chance<int>` with each of the six roll
+values, each with 1/6 chance. It then maps each roll value (preserving
+probability) into a new game where the player scores that many points.
+
+`Chance` has a few other helpful methods on it. For instance, `.condense()` will
+unify duplicate outcomes. This is very important for good performance, as it
+reduces the amount of branches in the search.
+
+
+```dart
+    // Begin by rolling 2d8
+	roll.roll(r2d8)
+	  // Now we have the outcomes 1-16, with corresponding probability.
+	  //
+	  // The player isrying to beat a total roll of 9:
+	  .map((r) => r > 9)
+	  // However, we still have 16 outcomes (10 false, 6 true).
+	  // This means the algorithm will have to explore 16 children (bad!)
+	  //
+	  // Fix this by condensing like so:
+	  .condense();
+```
+
+We can also merge simultaneous `Chance`s by using `mergeWith`. Calling
+`mergeWith` will automatically condense.
+
+```dart
+  // The player rolls a d6
+  final d6 = roll.roll(r1d6);
+
+  // And a player rolls a d8 as well
+  final d8 = roll.roll(r1d8);
+
+  // And we take the result of them added together:
+  final sumChance = d6.mergeWith(d8, (a, b) => a + b);
+
+  // There is no need to call `.condense()` in this case.
+```
+
+You can define the outcome of game actions either through chains of `Chance`
+results, maps, and merges, or you can define the `Chance` events manually:
+
+```dart
+class Fortify implements Move<DiceBattle> {
+  // ...
+
+  @override
+  Chance<DiceBattle> perform(DiceBattle game) {
+	// Use dice helpers and Chance manipulation, etc:
+    return roll.roll(r1d6).map((r) => game.copyWith(
+	  p1Score: game.p1Score + r,
+	));
+
+	// OR
+
+    // You can always create Chance objects manually:
+	return Chance<DiceBattle>(
+	  possibilities: [
+		for (final i in [1, 2, 3, 4, 5, 6])
+		  Possibility(
+			description: 'roll a $i',
+			probability: 1/6,
+			outcome: game.copyWith(
+			  p1Score: game.p1Score + i,
+			),
+		  ),
+	  ]
+	);
+
+    // And of course, you can do a mix of the two.
+  }
+}
+```
+
+### Pick the best move
+
+Lastly, its easy to call the expectiminimax algorithm with your new `Game`:
+
+```dart
+  var game = DiceBattle.brandNewGame();
+
+  final move = Expectiminimax<DiceBattle>(maxDepth: 5)
+	  .chooseBest(game.getMoves(), game);
+```
+
+Pick a suitable depth for your requirements. Even small depths will be expensive
+to compute, as expectiminimax does not allow for alpha beta pruning and can
+therefore be much slower than minimax. But of course, larger depths will select
+better moves.
+
+### Play your game
+
+A simple game loop between two AIs will look like the following:
+
+```dart
+  while (game.score != 1.0 && game.score != -1.0) {
+    final move move = Expectiminimax<DiceBattle>(maxDepth: 5)
+        .chooseBest(game.getMoves(), game);
+    print(move.description);
+
+    final chance = move.perform(game);
+    final outcome = chance.pick(random.nextDouble());
+	print(outcome.description);
+
+    game = outcome.outcome;
+  }
+```
+
+## Performance considerations
+
+The most important consideration is branching factor. If your game has a very
+high branching factor, consider MCTS instead.
+
+In general, ensure that all branches of your game are actually unique. For
+example, if a player rolls two six sided dice on theri turn in your game, are
+there 36 outcomes or are there actually only 12?
+
+The next biggest cost is typically list allocation. One easy place to reduce
+this is to try to return constants from `Game.getMoves`:
+
+```dart
+  @override
+  List<Move<DiceBattle>> getMoves() {
+    const fortifyOnly = [Fortify()];
+    const all = [Fortify(), Invest(), Attack()];
+
+    final myScore = p1Turn ? p1Score : p2Score;
+    final opDice = p1Turn ? p2DiceScore : p1DiceScore;
+
+    if (opDice > 1 && myScore >= investCost) {
+      return all;
+    } else {
+      return fortifyOnly;
+    }
+  }
+```
+
+Lastly, effort should be made to optimize the code for performing each move.
+
+In the future, this library could support reversible games and transition tables
+and more. Post an issue if you want this.
