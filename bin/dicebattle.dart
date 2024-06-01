@@ -45,6 +45,10 @@ class DiceBattle extends Game<DiceBattle> {
 
   @override
   List<Move<DiceBattle>> getMoves() {
+	if (p1Score >= winningScore || p2Score >= winningScore) {
+	  return const [];
+	}
+
     const fortifyOnly = [Fortify()];
     const canInvest = [Fortify(), Invest()];
     const canAttack = [Fortify(), Attack()];
@@ -192,7 +196,7 @@ void main() {
     roll: Roll(),
   );
   final random = Random();
-  final expectiminimax = Expectiminimax<DiceBattle>(maxDepth: 8);
+  final expectiminimax = Expectiminimax<DiceBattle>(maxDepth: 12);
 
   while (true) {
 	var game = startingGame;

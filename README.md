@@ -37,39 +37,12 @@ class DiceBattle extends Game<DiceBattle> {
   // ...
 ```
 
-Define the `Move`s for your game:
+#### Score Game States
 
-```dart
-class DiceBattle extends Game<DiceBattle> {
-  // ...
-  @override
-  List<Move<DiceBattle>> getMoves() {
-    return [
-	  // ...
-	  Invest(),
-	  // ...
-	];
-  }
-  // ...
-}
-
-class Invest implements Move<DiceBattle> {
-  const Invest();
-
-  @override
-  String get description => 'invest';
-
-  @override
-  Chance<DiceBattle> perform(DiceBattle game) {
-    // TODO: implement this
-  }
-}
-```
-
-And define how a game state is scored, and whether the engine should max or min
-that score. In general, the score should be a positive when player 1 is winning
-and negative when player 1 is winning. In this case, the game is maxing on
-player 1's turn and minning on player 2's turn.
+Next, define how a game state is scored, and whether the engine should max or
+min that score. In general, the score should be a positive when player 1 is
+winning and negative when player 1 is winning. In this case, the game is maxing
+on player 1's turn and minning on player 2's turn.
 
 ```dart
 class DiceBattle extends Game<DiceBattle> {
@@ -102,8 +75,6 @@ minimize and maximize this score. A simple heuristic can often be less likely to
 reward poor play, but requires more search depth to accurately evaluate a
 player's position.
 
-Now we must implement our `Move` class behavior.
-
 Your game also needs a hash function to be able to take advantage of
 transposition tables.
 
@@ -114,6 +85,52 @@ class DiceBattle extends Game<DiceBattle> {
   // ...
 }
 ```
+
+#### Define Game Moves
+
+Define the `Move`s for your game:
+
+```dart
+class DiceBattle extends Game<DiceBattle> {
+  // ...
+  @override
+  List<Move<DiceBattle>> getMoves() {
+    return [
+	  // ...
+	  Invest(),
+	  // ...
+	];
+  }
+  // ...
+}
+
+class Invest implements Move<DiceBattle> {
+  const Invest();
+
+  @override
+  String get description => 'invest';
+
+  @override
+  Chance<DiceBattle> perform(DiceBattle game) {
+    // TODO: implement this
+  }
+}
+```
+
+Make sure your game returns no moves when there is a winner:
+
+```dart
+  @override
+  List<Move<DiceBattle>> getMoves() {
+	if (p1Score >= 20 || p2Score >= 20) {
+	  return const [];
+	}
+
+    // ...
+  }
+```
+
+Now we must implement our `Move` class behavior, using `Chance` and `Dice` etc.
 
 ### Chance, Dice, Etc
 

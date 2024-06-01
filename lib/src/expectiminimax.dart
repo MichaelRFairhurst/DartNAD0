@@ -34,8 +34,14 @@ class Expectiminimax<G extends Game<G>> {
           return game.score;
         }
 
+		final moves = game.getMoves();
+
+        if (moves.isEmpty) {
+		  return game.score;
+		}
+
         final moveScores =
-            game.getMoves().map((m) => scoreMove(m, game, depth));
+            moves.map((m) => scoreMove(m, game, depth));
         if (game.isMaxing) {
           return moveScores.reduce((a, b) => max(a, b));
         } else {
