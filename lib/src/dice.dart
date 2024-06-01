@@ -44,4 +44,10 @@ class Dice {
       );
 
   double get expectedValue => rolls * (sides + 1) / 2;
+
+  @override
+  int get hashCode => Object.hashAll([rolls, sides]);
+
+  @override
+  bool operator==(Object? other) => other is Dice && other.sides == sides && other.rolls == rolls;
 }
