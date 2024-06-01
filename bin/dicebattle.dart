@@ -110,8 +110,7 @@ class Fortify implements Move<DiceBattle> {
   Chance<DiceBattle> perform(DiceBattle game) {
     final singleRoll = game.roll
         .roll(die)
-        .map((r) => r <= maxScoreRoll ? r : 0)
-        .condense();
+        .reduce((r) => r <= maxScoreRoll ? r : 0);
 
     int rollCount = game.p1Turn ? game.p1DiceScore : game.p2DiceScore;
 

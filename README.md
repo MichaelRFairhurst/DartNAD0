@@ -173,27 +173,27 @@ This example rolls a 1d6 to generate a `Chance<int>` with each of the six roll
 values, each with 1/6 chance. It then maps each roll value (preserving
 probability) into a new game where the player scores that many points.
 
-`Chance` has a few other helpful methods on it. For instance, `.condense()` will
-unify duplicate outcomes. This is very important for good performance, as it
-reduces the amount of branches in the search.
-
+If the transformation you wish to run will reduce the branching factor, you
+should use `reduce()` instead of `map()`, as this will result in a faster
+search:
 
 ```dart
-    // Begin by rolling 2d8
+    // A player is rolling 2d8, attempting to get a result of 9 or greater.
 	roll.roll(r2d8)
-	  // Now we have the outcomes 1-16, with corresponding probability.
-	  //
-	  // The player isrying to beat a total roll of 9:
+	  // Using `map()` means we still have 16 outcomes (10 false, 6 true),
+	  // which means the algorithm will have to explore 16 children (bad!)
 	  .map((r) => r > 9)
-	  // However, we still have 16 outcomes (10 false, 6 true).
-	  // This means the algorithm will have to explore 16 children (bad!)
-	  //
-	  // Fix this by condensing like so:
-	  .condense();
+
+   // The correct method to call for performance reasons is `reduce()`:
+   roll.roll(r2d8).reduce((r) => r > 9);
+
+   // Alternatively, you can always `condense()` any `Chance` to the same
+   // effect:
+   roll.roll(r2d8).map((r) => r > 9).condense();
 ```
 
-We can also merge simultaneous `Chance`s by using `mergeWith`. Calling
-`mergeWith` will automatically condense.
+We can also merge simultaneous `Chance`s by using `mergeWith()`. Calling
+`mergeWith()`, like `reduce()`, will automatically `condense()`.
 
 ```dart
   // The player rolls a d6
@@ -249,9 +249,9 @@ Lastly, its easy to call the expectiminimax algorithm with your new `Game`:
 
 ```dart
   var game = DiceBattle.brandNewGame();
+  var minimax = Expectiminimax<DiceBattle>(maxDepth: 5);
 
-  final move = Expectiminimax<DiceBattle>(maxDepth: 5)
-	  .chooseBest(game.getMoves(), game);
+  final move = minimax.chooseBest(game.getMoves(), game);
 ```
 
 Pick a suitable depth for your requirements. Even small depths will be expensive
@@ -259,14 +259,26 @@ to compute, as expectiminimax does not allow for alpha beta pruning and can
 therefore be much slower than minimax. But of course, larger depths will select
 better moves.
 
+In general, it is best to only construct one `Expectiminimax<G>()` and re-use
+it. Each instance maintains a transition table to cache prior results, which are
+often helpful across moves & games.
+
+You can customize this transition table as well:
+
+```dart
+  var table = TransitionTable(1024 * 1024);
+  var minimax = Expectiminimax<DiceBattle>(maxDepth: 5, transitionTable: table);
+```
+
 ### Play your game
 
 A simple game loop between two AIs will look like the following:
 
 ```dart
+  var minimax = Expectiminimax<DiceBattle>(maxDepth: 5);
+
   while (game.score != 1.0 && game.score != -1.0) {
-    final move move = Expectiminimax<DiceBattle>(maxDepth: 5)
-        .chooseBest(game.getMoves(), game);
+    final move = minimax.chooseBest(game.getMoves(), game);
     print(move.description);
 
     final chance = move.perform(game);
@@ -283,8 +295,9 @@ The most important consideration is branching factor. If your game has a very
 high branching factor, consider MCTS instead.
 
 In general, ensure that all branches of your game are actually unique. For
-example, if a player rolls two six sided dice on theri turn in your game, are
-there 36 outcomes or are there actually only 12?
+example, if a player rolls two six sided dice on their turn in your game, are
+there 36 outcomes or are there actually only 12? See details on Chance methods
+like `reduce()` and `mergeWith()` and `condense()`.
 
 The next biggest cost is typically list allocation. One easy place to reduce
 this is to try to return constants from `Game.getMoves`:
