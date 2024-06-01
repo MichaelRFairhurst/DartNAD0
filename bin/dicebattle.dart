@@ -196,7 +196,7 @@ void main() {
     roll: Roll(),
   );
   final random = Random();
-  final expectiminimax = Expectiminimax<DiceBattle>(maxDepth: 12);
+  final expectiminimax = Expectiminimax<DiceBattle>(maxDepth: 20);
 
   while (true) {
 	var game = startingGame;

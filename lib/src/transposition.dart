@@ -1,3 +1,5 @@
+/// A simple transposition table that takes a game's hash and creates four
+///candidate
 class TranspositionTable<G> {
   final List<_PositionData?> _table;
   final int size;
@@ -19,7 +21,7 @@ class TranspositionTable<G> {
       return score;
     } else {
       final entry = _table[bucket]!;
-      if (entry.work >= work) {
+      if (entry.work >= work || entry.score == 1.0 || entry.score == -1.0) {
         return entry.score;
       } else {
         final score = ifAbsent();

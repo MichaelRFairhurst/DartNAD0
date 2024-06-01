@@ -66,9 +66,7 @@ class DiceBattle extends Game<DiceBattle> {
 }
 ```
 
-It is a good idea to cap the score inside a range of winning and losing scores,
-such as `1.0` and `-1.0`, as shown here. Note that these should be finite
-values, or else the expectiminimax function will not work correctly.
+Games should be scored between the values `1.0` and `-1.0`, as shown here.
 
 You may implement any heuristic to compute a score. The algorithm will seek to
 minimize and maximize this score. A simple heuristic can often be less likely to
