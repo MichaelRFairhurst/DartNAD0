@@ -6,7 +6,7 @@ Note that expectiminimax is often much slower than minimax as it does not
 support alpha/beta pruning. In the future I would like to parallelize this,
 etc., and support parallelized MCTS.
 
-This has also not been hyper optimized.
+This has only been a little optimized.
 
 Use for your own fun!
 
@@ -103,6 +103,17 @@ reward poor play, but requires more search depth to accurately evaluate a
 player's position.
 
 Now we must implement our `Move` class behavior.
+
+Your game also needs a hash function to be able to take advantage of
+transposition tables.
+
+```dart
+class DiceBattle extends Game<DiceBattle> {
+  // ...
+  int get hashCode => Object.hashAll([p1Score, p2Score, ...]);
+  // ...
+}
+```
 
 ### Chance, Dice, Etc
 
@@ -297,5 +308,5 @@ this is to try to return constants from `Game.getMoves`:
 
 Lastly, effort should be made to optimize the code for performing each move.
 
-In the future, this library could support reversible games and transition tables
-and more. Post an issue if you want this.
+In the future, this library could support reversible games and multiplexing and
+iterative deepening and more. File an issue if you want this.

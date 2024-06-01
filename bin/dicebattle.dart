@@ -6,10 +6,11 @@ import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/roll.dart';
 
-const winningScore = 20;
-const sides = 6;
+const winningScore = 15;
+const die = r1d6;
 const investCost = -1;
-const maxScoreRoll = 4;
+const maxScoreRoll = 3;
+const attackPointWin = 0;
 
 class DiceBattle extends Game<DiceBattle> {
   DiceBattle({
@@ -78,6 +79,25 @@ class DiceBattle extends Game<DiceBattle> {
         p1Turn: p1Turn ?? this.p1Turn,
         roll: roll,
       );
+
+  @override
+  bool operator ==(Object? other) {
+    return other is DiceBattle &&
+        other.p1Score == p1Score &&
+        other.p2Score == p2Score &&
+        other.p1DiceScore == p1DiceScore &&
+        other.p2DiceScore == p2DiceScore &&
+        other.p1Turn == p1Turn;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+        p1Score,
+        p2Score,
+        p1DiceScore,
+        p2DiceScore,
+        p1Turn,
+      ]);
 }
 
 class Fortify implements Move<DiceBattle> {
@@ -89,7 +109,7 @@ class Fortify implements Move<DiceBattle> {
   @override
   Chance<DiceBattle> perform(DiceBattle game) {
     final singleRoll = game.roll
-        .roll(Dice(sides: sides, rolls: 1))
+        .roll(die)
         .map((r) => r <= maxScoreRoll ? r : 0)
         .condense();
 
@@ -138,21 +158,33 @@ class Attack implements Move<DiceBattle> {
     final toHit = game.p1Turn ? game.p2Score : game.p1Score;
 
     return game.roll
-        .roll(Dice(sides: sides, rolls: rolls))
+        .roll(Dice(sides: die.sides, rolls: rolls))
         .map((roll) => roll >= toHit)
         .condense()
         .map((hit) {
-      return game.copyWith(
-        p1Turn: !game.p1Turn,
-        p1DiceScore: hit && !game.p1Turn ? game.p1DiceScore - 1 : null,
-        p2DiceScore: hit && game.p1Turn ? game.p2DiceScore - 1 : null,
-      );
+      if (hit) {
+        return game.copyWith(
+          p1Turn: !game.p1Turn,
+          p1Score: game.p1Turn
+              ? game.p1Score + game.p2DiceScore + attackPointWin
+              : null,
+          p2Score: game.p1Turn
+              ? null
+              : game.p2Score + game.p1DiceScore + attackPointWin,
+          p1DiceScore: game.p1Turn ? null : game.p1DiceScore - 1,
+          p2DiceScore: game.p1Turn ? game.p2DiceScore - 1 : null,
+        );
+      } else {
+        return game.copyWith(
+          p1Turn: !game.p1Turn,
+        );
+      }
     });
   }
 }
 
 void main() {
-  var game = DiceBattle(
+  final startingGame = DiceBattle(
     p1Turn: true,
     p1Score: 0,
     p1DiceScore: 1,
@@ -161,24 +193,25 @@ void main() {
     roll: Roll(),
   );
   final random = Random();
+  final expectiminimax = Expectiminimax<DiceBattle>(maxDepth: 8);
 
-  var turns = 0;
-  while (game.score != 1.0 && game.score != -1.0) {
-	turns++;
-	final Move<DiceBattle> move;
-    move = Expectiminimax<DiceBattle>(maxDepth: 5)
-        .chooseBest(game.getMoves(), game);
-    if (move.description == 'attack') {
-      print('turn $turns ${move.description}');
+  while (true) {
+	var game = startingGame;
+    var turns = 0;
+    while (game.score != 1.0 && game.score != -1.0) {
+      turns++;
+      final Move<DiceBattle> move;
+      move = expectiminimax.chooseBest(game.getMoves(), game);
+      if (move.description == 'attack') {
+        print('turn $turns ${move.description}');
+      }
+      final chance = move.perform(game);
+      final outcome = chance.pick(random.nextDouble());
+      game = outcome.outcome;
     }
-    final chance = move.perform(game);
-    final outcome = chance.pick(random.nextDouble());
-    game = outcome.outcome;
+
+    print('turns $turns');
+    print('p1: ${game.p1Score} / ${game.p1DiceScore}');
+    print('p2: ${game.p2Score} / ${game.p2DiceScore}');
   }
-
-  print('turns $turns');
-  print('p1: ${game.p1Score} / ${game.p1DiceScore}');
-  print('p2: ${game.p2Score} / ${game.p2DiceScore}');
-
-  main();
 }
