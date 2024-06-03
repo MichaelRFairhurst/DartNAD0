@@ -2,13 +2,17 @@
 
 A version of minimax that allows for random events, coded in dart.
 
-Note that expectiminimax is often much slower than minimax as it does not
-support alpha/beta pruning. In the future I would like to parallelize this,
-etc., and support parallelized MCTS.
+Note that expectiminimax is often much slower than minimax as it cannot leverage
+alpha/beta pruning nearly as effectively. In the future I would like to
+parallelize this, etc., and support parallelized MCTS too.
 
-This has only been a little optimized.
+Mildy optimized, use for your own fun!
 
-Use for your own fun!
+## Current features
+
+- transposition tables
+- minimax-style alpha-beta pruning (for deterministic nodes)
+- \*-minimax (alpha beta pruning on CHANCE nodes)
 
 ## Usage
 
@@ -264,15 +268,15 @@ Lastly, its easy to call the expectiminimax algorithm with your new `Game`:
 
 ```dart
   var game = DiceBattle.brandNewGame();
-  var minimax = Expectiminimax<DiceBattle>(maxDepth: 5);
+  var minimax = Expectiminimax<DiceBattle>(maxDepth: 10);
 
   final move = minimax.chooseBest(game.getMoves(), game);
 ```
 
-Pick a suitable depth for your requirements. Even small depths will be expensive
-to compute, as expectiminimax does not allow for alpha beta pruning and can
-therefore be much slower than minimax. But of course, larger depths will select
-better moves.
+Pick a suitable depth for your requirements. Even small depths can be expensive
+to compute, as expectiminimax is not as efficient as minimax, due mostly to less
+efficient alpha beta pruning. But of course, larger depths will select better
+moves.
 
 In general, it is best to only construct one `Expectiminimax<G>()` and re-use
 it. Each instance maintains a transition table to cache prior results, which are
