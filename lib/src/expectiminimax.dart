@@ -15,37 +15,63 @@ class Expectiminimax<G extends Game<G>> {
 
   final int maxDepth;
 
-  Move<G> chooseBest(List<Move<G>> move, G game) {
+  Move<G> chooseBest(List<Move<G>> moves, G game) {
+    final alpha = -2.0;
+    final beta = 2.0;
+
+    // Final scoring.
     if (game.isMaxing) {
-      return bestBy<Move<G>, num>(move, (m) => scoreMove(m, game, 0))!;
+      return bestBy<Move<G>, num>(
+          moves, (m) => scoreMove(m, game, maxDepth, alpha, beta))!;
     } else {
-      return bestBy<Move<G>, num>(move, (m) => -scoreMove(m, game, 0))!;
+      return bestBy<Move<G>, num>(
+          moves, (m) => -scoreMove(m, game, maxDepth, alpha, beta))!;
     }
   }
 
-  double scoreMove(Move<G> move, G game, int depth) {
+  double scoreMove(Move<G> move, G game, int depth, double alpha, double beta) {
     final chance = move.perform(game);
-    return chance.expectedValue((g) => scoreGame(g, depth + 1));
+	alpha = chance.possibilities.length == 1 ? alpha : -2.0;
+	beta = chance.possibilities.length == 1 ? beta : 2.0;
+    return chance.expectedValue((g) => scoreGame(g, depth - 1, alpha, beta));
   }
 
-  double scoreGame(G game, int depth) =>
-      transpositionTable.scoreTransposition(game, maxDepth - depth, () {
-        if (depth == maxDepth) {
+  double scoreGame(G game, int depth, double alpha, double beta) =>
+      transpositionTable.scoreTransposition(game, depth, alpha, beta, () {
+        if (depth <= 0) {
           return game.score;
         }
 
-		final moves = game.getMoves();
+        final moves = game.getMoves();
 
         if (moves.isEmpty) {
-		  return game.score;
-		}
+          return game.score;
+        }
 
-        final moveScores =
-            moves.map((m) => scoreMove(m, game, depth));
         if (game.isMaxing) {
-          return moveScores.reduce((a, b) => max(a, b));
+          var maxScore = -1.0;
+          for (final move in moves) {
+            final score = scoreMove(move, game, depth - 1, alpha, beta);
+            if (score >= beta) {
+              return score;
+            }
+            maxScore = max(maxScore, score);
+            alpha = max(alpha, score);
+          }
+
+          return maxScore;
         } else {
-          return moveScores.reduce((a, b) => min(a, b));
+          var minScore = 1.0;
+          for (final move in moves) {
+            final score = scoreMove(move, game, depth - 1, alpha, beta);
+            if (score <= alpha) {
+              return score;
+            }
+            minScore = min(minScore, score);
+            beta = min(beta, score);
+          }
+
+          return minScore;
         }
       });
 }

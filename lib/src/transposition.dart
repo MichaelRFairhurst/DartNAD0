@@ -7,7 +7,8 @@ class TranspositionTable<G> {
   TranspositionTable(this.size)
       : _table = List.filled(size, null, growable: false);
 
-  double scoreTransposition(G game, int work, double Function() ifAbsent) {
+  double scoreTransposition(
+      G game, int work, double alpha, double beta, double Function() ifAbsent) {
     final hash = game.hashCode;
     final bucket = _bucket(hash);
 
@@ -17,11 +18,12 @@ class TranspositionTable<G> {
         hash: game.hashCode,
         work: work,
         score: score,
+        constraint: _constraintFor(score, alpha, beta),
       );
       return score;
     } else {
       final entry = _table[bucket]!;
-      if (entry.work >= work || entry.score == 1.0 || entry.score == -1.0) {
+      if (_isValid(entry, work, alpha, beta)) {
         return entry.score;
       } else {
         final score = ifAbsent();
@@ -29,9 +31,44 @@ class TranspositionTable<G> {
         _table[bucket]!
           ..hash = hash
           ..work = work
-          ..score = score;
+          ..score = score
+          ..constraint = _constraintFor(score, alpha, beta);
         return score;
       }
+    }
+  }
+
+  bool _isValid(_PositionData entry, int work, double alpha, double beta) {
+    final isVictory =
+        entry.score == 1.0 && entry.constraint != _ScoreConstraint.atMost;
+    final isLoss =
+        entry.score == -1.0 && entry.constraint != _ScoreConstraint.atLeast;
+
+    if (isVictory || isLoss) {
+      return true;
+    }
+
+    if (entry.work < work) {
+      return false;
+    }
+
+    final exceedsAlpha =
+        entry.score > alpha && entry.constraint != _ScoreConstraint.atMost;
+    final exceedsBeta =
+        entry.score < beta && entry.constraint != _ScoreConstraint.atLeast;
+    final exceedsCutoff = exceedsAlpha || exceedsBeta;
+    final isExact = entry.constraint == _ScoreConstraint.exactly;
+
+    return exceedsCutoff || isExact;
+  }
+
+  _ScoreConstraint _constraintFor(double score, double alpha, double beta) {
+    if (score <= alpha) {
+      return _ScoreConstraint.atLeast;
+    } else if (score >= beta) {
+      return _ScoreConstraint.atMost;
+    } else {
+      return _ScoreConstraint.exactly;
     }
   }
 
@@ -46,7 +83,12 @@ class TranspositionTable<G> {
     return null;
   }
 
-  void _add({required int hash, required int work, required double score}) {
+  void _add({
+    required int hash,
+    required int work,
+    required double score,
+    required _ScoreConstraint constraint,
+  }) {
     int worstIdx = -1;
     _PositionData? worstEntry;
     for (int i = 0; i < 4; ++i) {
@@ -69,13 +111,15 @@ class TranspositionTable<G> {
         hash: hash,
         work: work,
         score: score,
+        constraint: constraint,
       );
     } else {
       // Mutate existing to avoid thrashing GC.
       worstEntry
         ..hash = hash
         ..work = work
-        ..score = score;
+        ..score = score
+        ..constraint = constraint;
     }
   }
 
@@ -90,15 +134,23 @@ class TranspositionTable<G> {
   }
 }
 
+enum _ScoreConstraint {
+  exactly,
+  atLeast,
+  atMost,
+}
+
 class _PositionData {
   _PositionData({
     required this.hash,
     required this.work,
     required this.score,
+    required this.constraint,
   });
 
   // Mutable entries to avoid thrashing GC.
   int hash;
   int work;
   double score;
+  _ScoreConstraint constraint;
 }
