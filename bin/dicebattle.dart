@@ -119,7 +119,7 @@ class Fortify implements Move<DiceBattle> {
 
   static final _manyRollsCache = <Chance<int>>[];
   static Chance<int> manyRolls(Roll roll, int count) {
-    if (_manyRollsCache.length > count) {
+    if (_manyRollsCache.length >= count) {
       return _manyRollsCache[count - 1];
     }
 
@@ -128,10 +128,12 @@ class Fortify implements Move<DiceBattle> {
       _manyRollsCache.add(singleRoll);
     }
     var chance = singleRoll;
-    for (int i = _manyRollsCache.length + 1; i < count; ++i) {
+    for (int i = _manyRollsCache.length + 1; i <= count; ++i) {
       chance = chance.mergeWith(singleRoll, (a, b) => a + b);
       _manyRollsCache.add(chance);
     }
+    assert(_manyRollsCache.length == count);
+    assert(identical(_manyRollsCache[count - 1], chance));
     return chance;
   }
 
