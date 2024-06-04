@@ -16,12 +16,10 @@ class Roll {
     final comb = pow(dice.sides, dice.rolls);
 
     return _cache[dice] = Chance<int>(
-        possibilities: table.entries
-            .map((entry) => Possibility<int>(
-                description: 'rolled a ${entry.key}',
-                probability: entry.value / comb,
-                outcome: entry.key))
-            .toList());
+        possibilities: table.entries.map((entry) => Possibility<int>(
+            description: 'rolled a ${entry.key}',
+            probability: entry.value / comb,
+            outcome: entry.key)));
   }
 
   // TODO: use actual statistics to calculate this in fewer steps...

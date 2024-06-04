@@ -1,10 +1,10 @@
 class Chance<G> {
   Chance({
-    required this.possibilities,
-  });
+    required Iterable<Possibility<G>> possibilities,
+  }) : possibilities = possibilities.toList();
 
   Chance.just(G outcome)
-      : this(possibilities: [Possibility(probability: 1, outcome: outcome)]);
+      : possibilities = [Possibility(probability: 1, outcome: outcome)];
 
   final List<Possibility<G>> possibilities;
 
@@ -26,15 +26,12 @@ class Chance<G> {
   /// If the transformation reduces the probability factor, use [reduce].
   ///
   /// For instance, rolling 1d6 and subtracting it from an opponent's health.
-  Chance<T> map<T>(T Function(G) f) =>
-      Chance<T>(
-          possibilities: possibilities
-              .map((o) => Possibility<T>(
-                    probability: o.probability,
-                    outcome: f(o.outcome),
-                    description: o.description,
-                  ))
-              .toList());
+  Chance<T> map<T>(T Function(G) f) => Chance<T>(
+      possibilities: possibilities.map((o) => Possibility<T>(
+            probability: o.probability,
+            outcome: f(o.outcome),
+            description: o.description,
+          )));
 
   /// Transform the set of possible outcomes into a smaller set of possible
   /// outcomes, summing their probabilities.
@@ -62,13 +59,13 @@ class Chance<G> {
     }
 
     return Chance<T>(
-      possibilities: map.values.toList(),
+      possibilities: map.values,
     );
   }
 
   /// Transform possibility objects directly, allowing manipulation of
   Chance<T> mapWithProbability<T>(Possibility<T> Function(Possibility<G>) f) =>
-      Chance<T>(possibilities: possibilities.map((o) => f(o)).toList());
+      Chance<T>(possibilities: possibilities.map((o) => f(o)));
 
   /// Supply a number between 0.0 and 1.0, to pick an outcome, weighted by
   /// the probability of that outcome.
@@ -115,7 +112,7 @@ class Chance<G> {
     }
 
     return Chance<G>(
-      possibilities: map.values.toList(),
+      possibilities: map.values,
     );
   }
 
@@ -139,7 +136,7 @@ class Chance<G> {
     }
 
     return Chance<G>(
-      possibilities: map.values.toList(),
+      possibilities: map.values,
     );
   }
 }
