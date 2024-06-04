@@ -26,9 +26,9 @@ class TranspositionTable<G> {
 
   void clear() {
     _table.fillRange(0, size, null);
-	if (isStrict) {
-	  _strictStore.fillRange(0, size, null);
-	}
+    if (isStrict) {
+      _strictStore.fillRange(0, size, null);
+    }
   }
 
   double scoreTransposition(G game, int work, double alpha, double beta,
@@ -38,7 +38,8 @@ class TranspositionTable<G> {
 
     if (bucket == null) {
       final moveScore = ifAbsent(null);
-      _add(game,
+      _add(
+        game,
         hash: game.hashCode,
         work: work,
         score: moveScore.score,
@@ -109,7 +110,8 @@ class TranspositionTable<G> {
     return null;
   }
 
-  void _add(G game, {
+  void _add(
+    G game, {
     required int hash,
     required int work,
     required double score,
@@ -154,27 +156,28 @@ class TranspositionTable<G> {
         ..score = score
         ..moveIdx = moveIdx
         ..constraint = constraint;
+
     }
-	_setStrict(worstIdx, game);
+    _setStrict(worstIdx, game);
   }
 
   void _setStrict(int bucket, G game) {
-	if (!isStrict) {
-	  return;
-	}
+    if (!isStrict) {
+      return;
+    }
 
     _strictStore[bucket] = game;
   }
 
   bool _isSame(int bucket, G game, int hash) {
-	final entry = _table[bucket];
-	if (entry?.hash != hash) {
-	  return false;
-	}
+    final entry = _table[bucket];
+    if (entry?.hash != hash) {
+      return false;
+    }
 
     if (!isStrict) {
-	  return true;
-	}
+      return true;
+    }
 
     return game == _strictStore[bucket];
   }
