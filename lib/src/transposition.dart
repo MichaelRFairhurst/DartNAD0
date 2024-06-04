@@ -1,3 +1,5 @@
+import 'package:expectiminimax/src/expectiminimax.dart';
+
 /// A simple transposition table that takes a game's hash and creates four
 /// candidate buckets based on HASH + n % size for n=0..3.
 ///
@@ -29,33 +31,36 @@ class TranspositionTable<G> {
 	}
   }
 
-  double scoreTransposition(
-      G game, int work, double alpha, double beta, double Function() ifAbsent) {
+  double scoreTransposition(G game, int work, double alpha, double beta,
+      MoveScore Function(int?) ifAbsent) {
     final hash = game.hashCode;
     final bucket = _bucket(hash, game);
 
     if (bucket == null) {
-      final score = ifAbsent();
-      _add(
+      final moveScore = ifAbsent(null);
+      _add(game,
         hash: game.hashCode,
         work: work,
-        score: score,
-        constraint: _constraintFor(score, alpha, beta),
+        score: moveScore.score,
+        moveIdx: moveScore.moveIdx,
+        constraint: _constraintFor(moveScore.score, alpha, beta),
       );
-      return score;
+      return moveScore.score;
     } else {
       final entry = _table[bucket]!;
       if (_isValid(entry, work, alpha, beta)) {
         return entry.score;
       } else {
-        final score = ifAbsent();
+        final moveScore = ifAbsent(entry.moveIdx);
         // Mutate existing to avoid thrashing GC.
         _table[bucket]!
           ..hash = hash
           ..work = work
-          ..score = score
-          ..constraint = _constraintFor(score, alpha, beta);
-        return score;
+          ..score = moveScore.score
+          ..moveIdx = moveScore.moveIdx
+          ..constraint = _constraintFor(moveScore.score, alpha, beta);
+		  _setStrict(hash, game);
+        return moveScore.score;
       }
     }
   }
@@ -108,6 +113,7 @@ class TranspositionTable<G> {
     required int hash,
     required int work,
     required double score,
+    required int? moveIdx,
     required _ScoreConstraint constraint,
   }) {
     int worstIdx = -1;
@@ -137,6 +143,7 @@ class TranspositionTable<G> {
         hash: hash,
         work: work,
         score: score,
+        moveIdx: moveIdx,
         constraint: constraint,
       );
     } else {
@@ -145,6 +152,7 @@ class TranspositionTable<G> {
         ..hash = hash
         ..work = work
         ..score = score
+        ..moveIdx = moveIdx
         ..constraint = constraint;
     }
 	_setStrict(worstIdx, game);
@@ -194,11 +202,13 @@ class _PositionData {
     required this.work,
     required this.score,
     required this.constraint,
+    required this.moveIdx,
   });
 
   // Mutable entries to avoid thrashing GC.
   int hash;
   int work;
+  int? moveIdx;
   double score;
   _ScoreConstraint constraint;
 }

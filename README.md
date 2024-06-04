@@ -13,6 +13,7 @@ Mildy optimized, use for your own fun!
 - transposition tables
 - minimax-style alpha-beta pruning (for deterministic nodes)
 - \*-minimax (alpha beta pruning on CHANCE nodes)
+- move ordering (based on best move stored in transition tables)
 
 ## Usage
 

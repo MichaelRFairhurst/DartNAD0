@@ -14,11 +14,24 @@ class Expectiminimax<G extends Game<G>> {
   final TranspositionTable<G> transpositionTable;
 
   final int maxDepth;
+  bool useAlphaBeta = true;
+  bool useStarMinimax = true;
+  bool useIterativeDeepening = false;
 
   Move<G> chooseBest(List<Move<G>> moves, G game) {
     final alpha = -2.0;
     final beta = 2.0;
 
+    if (useIterativeDeepening) {
+      // Iterative deepening
+      for (var i = 1; i < maxDepth; ++i) {
+        for (final move in moves) {
+          scoreMove(move, game, i, alpha, beta);
+        }
+      }
+    }
+
+    // useAlphaBeta = useStarMinimax = true;
     // Final scoring.
     if (game.isMaxing) {
       return bestBy<Move<G>, num>(
@@ -31,9 +44,13 @@ class Expectiminimax<G extends Game<G>> {
 
   double scoreMove(Move<G> move, G game, int depth, double alpha, double beta) {
     final chance = move.perform(game);
-    //alpha = chance.possibilities.length == 1 ? alpha : -2.0;
-    //beta = chance.possibilities.length == 1 ? beta : 2.0;
-    //return chance.expectedValue((g) => scoreGame(g, depth - 1, alpha, beta));
+    if (!useAlphaBeta) {
+      return chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+    } else if (!useStarMinimax) {
+      alpha = chance.possibilities.length == 1 ? alpha : -2.0;
+      beta = chance.possibilities.length == 1 ? beta : 2.0;
+      return chance.expectedValue((g) => scoreGame(g, depth - 1, alpha, beta));
+    }
 
     if (chance.possibilities.length == 1) {
       // Optimization: skip all the below float math for this simple case.
@@ -61,13 +78,12 @@ class Expectiminimax<G extends Game<G>> {
       // si <= (alpha - W * pi+1 - W * pi+2 - s0 * p0 - s1 * p1) / pi
       // si >= (beta - W * pi+1 - W * pi+2 - s0 * p0 - s1 * p1) / pi
 
-	  // Optimization? We can prove without floating multiplication and
-	  // division that these nodes cannot result in an alpha-beta cutoff.
+      // Optimization? We can prove without floating multiplication and
+      // division that these nodes cannot result in an alpha-beta cutoff.
       if (future > alpha + p.probability - sum &&
           future > -beta + p.probability + sum) {
-
         // Proof of correctness:
-		//
+        //
         // (alpha - sum - worstAlpha * future) / p.probability < -1.0
         // alpha - sum - worstAlpha * future < -p.probability
         // alpha - worstAlpha * future < -p.probability + sum
@@ -109,41 +125,87 @@ class Expectiminimax<G extends Game<G>> {
   }
 
   double scoreGame(G game, int depth, double alpha, double beta) =>
-      transpositionTable.scoreTransposition(game, depth, alpha, beta, () {
+      transpositionTable.scoreTransposition(game, depth, alpha, beta,
+          (int? lastBestMoveIdx) {
         if (depth <= 0) {
-          return game.score;
+          return MoveScore(score: game.score, moveIdx: null);
         }
 
         final moves = game.getMoves();
 
         if (moves.isEmpty) {
-          return game.score;
+          return MoveScore(score: game.score, moveIdx: null);
         }
 
         if (game.isMaxing) {
           var maxScore = -1.0;
-          for (final move in moves) {
-            final score = scoreMove(move, game, depth - 1, alpha, beta);
-            if (score >= beta) {
-              return score;
+          if (lastBestMoveIdx != null && lastBestMoveIdx < moves.length) {
+            final score =
+                scoreMove(moves[lastBestMoveIdx], game, depth - 1, alpha, beta);
+            if (score >= beta && useAlphaBeta) {
+              return MoveScore(score: score, moveIdx: lastBestMoveIdx);
             }
             maxScore = max(maxScore, score);
             alpha = max(alpha, score);
           }
 
-          return maxScore;
+          var bestMove = lastBestMoveIdx ?? -1;
+          for (var i = 0; i < moves.length; ++i) {
+            if (i == lastBestMoveIdx) {
+              continue;
+            }
+            final move = moves[i];
+            final score = scoreMove(move, game, depth - 1, alpha, beta);
+            if (score > maxScore) {
+              bestMove = i;
+            }
+            if (score >= beta && useAlphaBeta) {
+              return MoveScore(score: score, moveIdx: i);
+            }
+            maxScore = max(maxScore, score);
+            alpha = max(alpha, score);
+          }
+
+          return MoveScore(score: maxScore, moveIdx: bestMove);
         } else {
           var minScore = 1.0;
-          for (final move in moves) {
+          if (lastBestMoveIdx != null && lastBestMoveIdx < moves.length) {
+            final score =
+                scoreMove(moves[lastBestMoveIdx], game, depth - 1, alpha, beta);
+            if (score <= alpha && useAlphaBeta) {
+              return MoveScore(score: score, moveIdx: lastBestMoveIdx);
+            }
+            minScore = min(minScore, score);
+            beta = min(beta, score);
+          }
+          var bestMove = lastBestMoveIdx ?? -1;
+          for (var i = 0; i < moves.length; ++i) {
+            if (i == lastBestMoveIdx) {
+              continue;
+            }
+            final move = moves[i];
             final score = scoreMove(move, game, depth - 1, alpha, beta);
-            if (score <= alpha) {
-              return score;
+            if (score < minScore) {
+              bestMove = i;
+            }
+            if (score <= alpha && useAlphaBeta) {
+              return MoveScore(score: score, moveIdx: i);
             }
             minScore = min(minScore, score);
             beta = min(beta, score);
           }
 
-          return minScore;
+          return MoveScore(score: minScore, moveIdx: bestMove);
         }
       });
+}
+
+class MoveScore {
+  MoveScore({
+    required this.moveIdx,
+    required this.score,
+  });
+
+  final int? moveIdx;
+  final double score;
 }
