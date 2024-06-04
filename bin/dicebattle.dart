@@ -6,7 +6,7 @@ import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/roll.dart';
 
-const winningScore = 15;
+const winningScore = 20;
 const die = r1d6;
 const investCost = -1;
 const maxScoreRoll = 3;
@@ -45,9 +45,9 @@ class DiceBattle extends Game<DiceBattle> {
 
   @override
   List<Move<DiceBattle>> getMoves() {
-	if (p1Score >= winningScore || p2Score >= winningScore) {
-	  return const [];
-	}
+    if (p1Score >= winningScore || p2Score >= winningScore) {
+      return const [];
+    }
 
     const fortifyOnly = [Fortify()];
     const canInvest = [Fortify(), Invest()];
@@ -95,13 +95,16 @@ class DiceBattle extends Game<DiceBattle> {
   }
 
   @override
-  int get hashCode => Object.hashAll([
-        p1Score,
-        p2Score,
-        p1DiceScore,
-        p2DiceScore,
-        p1Turn,
-      ]);
+  int get hashCode {
+    // Mixed radix id as hash code, because we store every game without
+    // collision in a reasonably small transition table like this.
+    int result = p1Turn ? 1 : 0;
+    result = result * 30 + p1Score;
+    result = result * 30 + p2Score;
+    result = result * 10 + p1DiceScore;
+    result = result * 10 + p2DiceScore;
+    return result;
+  }
 }
 
 class Fortify implements Move<DiceBattle> {
@@ -110,18 +113,33 @@ class Fortify implements Move<DiceBattle> {
   @override
   String get description => 'fortify';
 
+  static Chance<int>? _singleRoll;
+  static Chance<int> getSingleRoll(Roll roll) =>
+      _singleRoll ??= roll.roll(die).reduce((r) => r <= maxScoreRoll ? r : 0);
+
+  static final _manyRollsCache = <Chance<int>>[];
+  static Chance<int> manyRolls(Roll roll, int count) {
+    if (_manyRollsCache.length > count) {
+      return _manyRollsCache[count - 1];
+    }
+
+    final singleRoll = getSingleRoll(roll);
+    if (_manyRollsCache.isEmpty) {
+      _manyRollsCache.add(singleRoll);
+    }
+    var chance = singleRoll;
+    for (int i = _manyRollsCache.length + 1; i < count; ++i) {
+      chance = chance.mergeWith(singleRoll, (a, b) => a + b);
+      _manyRollsCache.add(chance);
+    }
+    return chance;
+  }
+
   @override
   Chance<DiceBattle> perform(DiceBattle game) {
-    final singleRoll = game.roll
-        .roll(die)
-        .reduce((r) => r <= maxScoreRoll ? r : 0);
-
     int rollCount = game.p1Turn ? game.p1DiceScore : game.p2DiceScore;
 
-    var chance = singleRoll;
-    for (int i = 1; i < rollCount; ++i) {
-      chance = chance.mergeWith(singleRoll, (a, b) => a + b);
-    }
+    final chance = manyRolls(game.roll, rollCount);
 
     return chance.map((result) => game.copyWith(
           p1Turn: !game.p1Turn,
@@ -155,16 +173,22 @@ class Attack implements Move<DiceBattle> {
   @override
   String get description => 'attack';
 
+  static final attackMap = <Dice, Map<int, Chance<bool>>>{};
+
   @override
   Chance<DiceBattle> perform(DiceBattle game) {
     final rolls = game.p1Turn ? game.p1DiceScore : game.p2DiceScore;
     final toHit = game.p1Turn ? game.p2Score : game.p1Score;
 
-    return game.roll
-        .roll(Dice(sides: die.sides, rolls: rolls))
-        .map((roll) => roll >= toHit)
-        .condense()
-        .map((hit) {
+    final dice = Dice(sides: die.sides, rolls: rolls);
+
+    final chance = attackMap.putIfAbsent(dice, () {
+      return <int, Chance<bool>>{};
+    }).putIfAbsent(toHit, () {
+      return game.roll.roll(dice).reduce((roll) => roll >= toHit);
+    });
+
+    return chance.map((hit) {
       if (hit) {
         return game.copyWith(
           p1Turn: !game.p1Turn,
@@ -195,26 +219,29 @@ void main() {
     p2DiceScore: 1,
     roll: Roll(),
   );
-  final random = Random();
-  final expectiminimax = Expectiminimax<DiceBattle>(maxDepth: 20);
+  final random = Random(0);
 
-  while (true) {
-	var game = startingGame;
+  final start = DateTime.now();
+  for (int i = 0; i < 100; ++i) {
+    final expectiminimax = Expectiminimax<DiceBattle>(maxDepth: 20);
+    var game = startingGame;
     var turns = 0;
     while (game.score != 1.0 && game.score != -1.0) {
       turns++;
       final Move<DiceBattle> move;
       move = expectiminimax.chooseBest(game.getMoves(), game);
-      if (move.description == 'attack') {
-        print('turn $turns ${move.description}');
-      }
+      //if (move.description == 'attack') {
+      //  print('turn $turns ${move.description}');
+      //}
       final chance = move.perform(game);
       final outcome = chance.pick(random.nextDouble());
       game = outcome.outcome;
     }
 
-    print('turns $turns');
-    print('p1: ${game.p1Score} / ${game.p1DiceScore}');
-    print('p2: ${game.p2Score} / ${game.p2DiceScore}');
+    //print('turns $turns');
+    //print('p1: ${game.p1Score} / ${game.p1DiceScore}');
+    //print('p2: ${game.p2Score} / ${game.p2DiceScore}');
   }
+  final end = DateTime.now();
+  print('took ${end.difference(start).inMilliseconds}ms');
 }

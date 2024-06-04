@@ -339,7 +339,9 @@ this is to try to return constants from `Game.getMoves`:
   }
 ```
 
-Lastly, effort should be made to optimize the code for performing each move.
+Lastly, effort should be made to optimize the code for performing each move. For
+example, any `Chance<T>` manipulations that will be repeated and can be cached,
+should be.
 
 In the future, this library could support reversible games and multiplexing and
 iterative deepening and more. File an issue if you want this.
