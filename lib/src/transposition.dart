@@ -1,16 +1,38 @@
 /// A simple transposition table that takes a game's hash and creates four
-///candidate
+/// candidate buckets based on HASH + n % size for n=0..3.
+///
+/// By default, this does not require strict equality but rather assumes a good
+/// enough hashing algorithm. Set the optional parameter [isStrict] to true to
+/// prevent hash collisions, although do note that this takes up more memory.
 class TranspositionTable<G> {
-  final List<_PositionData?> _table;
+  /// Total number of entries in the transition table.
   final int size;
 
-  TranspositionTable(this.size)
-      : _table = List.filled(size, null, growable: false);
+  /// Whether to use `==` on lookup, to ensure hits are not hash collisions.
+  ///
+  /// Requires additional memory and skipped by most chess engines. However,
+  /// this is also required for correctness/avoids search instability.
+  final bool isStrict;
+
+  final List<_PositionData?> _table;
+  final List<G?> _strictStore;
+
+  TranspositionTable(this.size, {this.isStrict = false})
+      : _table = List.filled(size, null, growable: false),
+        _strictStore =
+            isStrict ? List.filled(size, null, growable: false) : const [];
+
+  void clear() {
+    _table.fillRange(0, size, null);
+	if (isStrict) {
+	  _strictStore.fillRange(0, size, null);
+	}
+  }
 
   double scoreTransposition(
       G game, int work, double alpha, double beta, double Function() ifAbsent) {
     final hash = game.hashCode;
-    final bucket = _bucket(hash);
+    final bucket = _bucket(hash, game);
 
     if (bucket == null) {
       final score = ifAbsent();
@@ -53,9 +75,9 @@ class TranspositionTable<G> {
     }
 
     final exceedsAlpha =
-        entry.score > alpha && entry.constraint != _ScoreConstraint.atMost;
+        entry.score <= alpha && entry.constraint != _ScoreConstraint.atLeast;
     final exceedsBeta =
-        entry.score < beta && entry.constraint != _ScoreConstraint.atLeast;
+        entry.score >= beta && entry.constraint != _ScoreConstraint.atMost;
     final exceedsCutoff = exceedsAlpha || exceedsBeta;
     final isExact = entry.constraint == _ScoreConstraint.exactly;
 
@@ -64,26 +86,25 @@ class TranspositionTable<G> {
 
   _ScoreConstraint _constraintFor(double score, double alpha, double beta) {
     if (score <= alpha) {
-      return _ScoreConstraint.atLeast;
-    } else if (score >= beta) {
       return _ScoreConstraint.atMost;
+    } else if (score >= beta) {
+      return _ScoreConstraint.atLeast;
     } else {
       return _ScoreConstraint.exactly;
     }
   }
 
-  int? _bucket(int hash) {
+  int? _bucket(int hash, G game) {
     for (int i = 0; i < 4; ++i) {
       final bucket = (hash + i) % size;
-      final entry = _table[bucket];
-      if (entry != null && entry.hash == hash) {
+      if (_isSame(bucket, game, hash)) {
         return bucket;
       }
     }
     return null;
   }
 
-  void _add({
+  void _add(G game, {
     required int hash,
     required int work,
     required double score,
@@ -95,11 +116,16 @@ class TranspositionTable<G> {
       final bucket = (hash + i) % size;
       final entry = _table[bucket];
       if (entry == null) {
-        worstIdx = bucket;
-        worstEntry = entry;
-        break;
+        if (worstIdx == -1) {
+          worstIdx = bucket;
+          worstEntry = entry;
+        }
       } else {
-        if (_isWorse(worstEntry, entry)) {
+        if (entry.hash == hash) {
+          worstEntry = entry;
+          worstIdx = bucket;
+          break;
+        } else if (_isWorse(worstEntry, entry)) {
           worstEntry = entry;
           worstIdx = bucket;
         }
@@ -121,12 +147,34 @@ class TranspositionTable<G> {
         ..score = score
         ..constraint = constraint;
     }
+	_setStrict(worstIdx, game);
+  }
+
+  void _setStrict(int bucket, G game) {
+	if (!isStrict) {
+	  return;
+	}
+
+    _strictStore[bucket] = game;
+  }
+
+  bool _isSame(int bucket, G game, int hash) {
+	final entry = _table[bucket];
+	if (entry?.hash != hash) {
+	  return false;
+	}
+
+    if (!isStrict) {
+	  return true;
+	}
+
+    return game == _strictStore[bucket];
   }
 
   bool _isWorse(_PositionData? knownWorst, _PositionData? candidate) {
-    if (knownWorst == null) {
+    if (candidate == null) {
       return true;
-    } else if (candidate == null) {
+    } else if (knownWorst == null) {
       return false;
     } else {
       return candidate.work < knownWorst.work;
