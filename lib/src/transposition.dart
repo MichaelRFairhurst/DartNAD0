@@ -125,20 +125,18 @@ class TranspositionTable<G> {
     for (int i = 0; i < 4; ++i) {
       final bucket = (hash + i) % size;
       final entry = _table[bucket];
-      if (entry == null) {
-        if (worstIdx == -1) {
-          worstIdx = bucket;
-          worstEntry = entry;
-        }
-      } else {
-        if (entry.hash == hash) {
-          worstEntry = entry;
-          worstIdx = bucket;
-          break;
-        } else if (_isWorse(worstEntry, entry)) {
-          worstEntry = entry;
-          worstIdx = bucket;
-        }
+      if (worstIdx == -1) {
+        worstIdx = bucket;
+        worstEntry = entry;
+      }
+
+      if (entry?.hash == hash) {
+        worstEntry = entry;
+        worstIdx = bucket;
+        break;
+      } else if (_isWorse(knownWorst: worstEntry, candidate: entry)) {
+        worstEntry = entry;
+        worstIdx = bucket;
       }
     }
 
@@ -184,11 +182,11 @@ class TranspositionTable<G> {
     return game == _strictStore[bucket];
   }
 
-  bool _isWorse(_PositionData? knownWorst, _PositionData? candidate) {
-    if (candidate == null) {
-      return true;
-    } else if (knownWorst == null) {
+  bool _isWorse({_PositionData? knownWorst, _PositionData? candidate}) {
+    if (knownWorst == null) {
       return false;
+    } else if (candidate == null) {
+      return true;
     } else {
       return candidate.work < knownWorst.work;
     }
