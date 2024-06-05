@@ -67,6 +67,8 @@ class TranspositionTable<G> {
   }
 
   bool _isValid(_PositionData entry, int work, double alpha, double beta) {
+    assert(false,
+        'will falsely trip assertions because transposition table is on.');
     final isVictory =
         entry.score == 1.0 && entry.constraint != _ScoreConstraint.atMost;
     final isLoss =

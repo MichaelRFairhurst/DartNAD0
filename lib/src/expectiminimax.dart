@@ -16,6 +16,7 @@ class Expectiminimax<G extends Game<G>> {
   final int maxDepth;
   bool useAlphaBeta = true;
   bool useStarMinimax = true;
+  bool probeChanceNodes = true;
   bool useIterativeDeepening = false;
 
   Move<G> chooseBest(List<Move<G>> moves, G game) {
@@ -42,19 +43,44 @@ class Expectiminimax<G extends Game<G>> {
     }
   }
 
+  double checkScoreGame(G game, int depth, double alpha, double beta) {
+    final score = scoreGame(game, depth, alpha, beta);
+    assert(() {
+      final checkedScore = scoreGame(game, depth, -2.0, 2.0);
+      if (score < alpha && score > beta) {
+        assert(checkedScore == score,
+            'Got the wrong score in non-cutoff range: $score vs $checkedScore');
+      } else if (score > alpha) {
+        assert(checkedScore + 0.0001 > alpha,
+            'Incorrect alpha cutoff: $score vs $checkedScore, alpha $alpha');
+        assert(checkedScore + 0.0001 >= score,
+            'alpha cutoff with wrong score: $score vs $checkedScore, alpha $alpha');
+      } else if (score < beta) {
+        assert(checkedScore - 0.0001 < beta,
+            'Incorrect beta cutoff: $score vs $checkedScore, beta $beta');
+        assert(checkedScore - 0.0001 <= score,
+            'beta cutoff with wrong score: $score vs $checkedScore, beta $beta');
+      }
+      return true;
+    }());
+    return score;
+  }
+
   double scoreMove(Move<G> move, G game, int depth, double alpha, double beta) {
     final chance = move.perform(game);
     if (!useAlphaBeta) {
-      return chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+      return chance
+          .expectedValue((g) => checkScoreGame(g, depth - 1, -2.0, 2.0));
     } else if (!useStarMinimax) {
       alpha = chance.possibilities.length == 1 ? alpha : -2.0;
       beta = chance.possibilities.length == 1 ? beta : 2.0;
-      return chance.expectedValue((g) => scoreGame(g, depth - 1, alpha, beta));
+      return chance
+          .expectedValue((g) => checkScoreGame(g, depth - 1, alpha, beta));
     }
 
     if (chance.possibilities.length == 1) {
       // Optimization: skip all the below float math for this simple case.
-      return scoreGame(
+      return checkScoreGame(
           chance.possibilities.single.outcome, depth - 1, alpha, beta);
     }
 
@@ -100,14 +126,14 @@ class Expectiminimax<G extends Game<G>> {
 
         assert((alpha - sum - worstAlpha * future) / p.probability < -1);
         assert((beta - sum - worstBeta * future) / p.probability > 1);
-        sum += scoreGame(p.outcome, depth - 1, -2.0, 2.0) * p.probability;
+        sum += checkScoreGame(p.outcome, depth - 1, -2.0, 2.0) * p.probability;
         continue;
       }
 
       final alphaP = (alpha - sum - worstAlpha * future) / p.probability;
       final betaP = (beta - sum - worstBeta * future) / p.probability;
-      final score =
-          scoreGame(p.outcome, depth - 1, max(-2.0, alphaP), min(2.0, betaP));
+      final score = checkScoreGame(
+          p.outcome, depth - 1, max(-2.0, alphaP), min(2.0, betaP));
 
       sum += score * p.probability;
 
@@ -115,8 +141,22 @@ class Expectiminimax<G extends Game<G>> {
       double minScore = sum + worstBeta * future;
 
       if (score <= alphaP) {
+        assert(() {
+          final checkScore =
+              chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+          assert(checkScore <= alpha, '$checkScore is not <= $alpha');
+          assert(maxScore <= alpha, '$maxScore is not <= $alpha');
+          return true;
+        }());
         return maxScore;
       } else if (score >= betaP) {
+        assert(() {
+          final checkScore =
+              chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+          assert(checkScore >= beta, '$checkScore is not >= $beta');
+          assert(maxScore >= beta, '$maxScore is not >= $beta');
+          return true;
+        }());
         return minScore;
       }
     }
