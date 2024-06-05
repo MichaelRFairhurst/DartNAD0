@@ -16,6 +16,23 @@ Mildy optimized, use for your own fun!
 - move ordering (based on best move stored in transition tables)
 - killer move heuristic
 
+## TODO
+
+- '\*-minimax2' pruning (probing pass on CHANCE descendents): implemented but
+  does not seem to perform well currently.
+- Iterative deepening: implemented but not meeting requirements to perform well
+  currentl.
+- Concurrency: will be hard to do anything like lazy SMP in Dart. We could
+  easily thread on CHANCE nodes, however, this strategy could backfire if we
+  can't share the transposition table.
+- Quiescence search (necessary for certain games to avoid horizon problems,
+  find good move orderings in iterative deepening).
+- Reversible games: Reduce allocation & GC overhead by using mutable game
+  objects and making/unmaking moves
+- Developer features: Stuff like building in ways to play AIs against each
+  other, perft(), and benchmarking improvements.
+- MCTS. It aint expectiminimax, but it is a better choice for some games.
+
 ## Usage
 
 First we define how the game moves and progresses.
@@ -343,6 +360,3 @@ this is to try to return constants from `Game.getMoves`:
 Lastly, effort should be made to optimize the code for performing each move. For
 example, any `Chance<T>` manipulations that will be repeated and can be cached,
 should be.
-
-In the future, this library could support reversible games and multiplexing and
-iterative deepening and more. File an issue if you want this.
