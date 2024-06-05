@@ -136,9 +136,23 @@ class Expectiminimax<G extends Game<G>> {
         sumUB += scoresUB[i] * p.probability - p.probability;
         if (sumUB <= alpha) {
           stats.cutoffsByPly[depth]++;
+          assert(() {
+            final checkScore =
+                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            assert(checkScore <= alpha,
+                '$sumUB is <= $alpha, but real score is $checkScore');
+            return true;
+          }());
           return sumUB;
         } else if (sumLB >= beta) {
           stats.cutoffsByPly[depth]++;
+          assert(() {
+            final checkScore =
+                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            assert(checkScore >= alpha,
+                '$sumUB is >= $beta, but real score is $checkScore');
+            return true;
+          }());
           return sumLB;
         }
       }
