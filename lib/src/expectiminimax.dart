@@ -29,7 +29,6 @@ class Expectiminimax<G extends Game<G>> {
     final beta = 2.0;
 
     if (useIterativeDeepening) {
-      // Iterative deepening
       for (var i = 1; i < maxDepth; ++i) {
         for (final move in moves) {
           scoreMove(move, game, i, alpha, beta);
@@ -37,7 +36,6 @@ class Expectiminimax<G extends Game<G>> {
       }
     }
 
-    // useAlphaBeta = useStarMinimax = true;
     // Final scoring.
     if (game.isMaxing) {
       return bestBy<Move<G>, num>(
