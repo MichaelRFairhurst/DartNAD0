@@ -14,6 +14,7 @@ Mildy optimized, use for your own fun!
 - minimax-style alpha-beta pruning (for deterministic nodes)
 - \*-minimax (alpha beta pruning on CHANCE nodes)
 - move ordering (based on best move stored in transition tables)
+- killer move heuristic
 
 ## Usage
 

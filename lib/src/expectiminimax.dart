@@ -8,9 +8,11 @@ class Expectiminimax<G extends Game<G>> {
   Expectiminimax({
     required this.maxDepth,
     TranspositionTable<G>? transpositionTable,
-  }) : transpositionTable =
-            transpositionTable ?? TranspositionTable<G>(1024 * 1024);
+  })  : transpositionTable =
+            transpositionTable ?? TranspositionTable<G>(1024 * 1024),
+        killerMoves = List<Move<G>?>.filled(maxDepth, null, growable: false);
 
+  final List<Move<G>?> killerMoves;
   final TranspositionTable<G> transpositionTable;
 
   final int maxDepth;
@@ -287,21 +289,39 @@ class Expectiminimax<G extends Game<G>> {
           return MoveScore(score: game.score, moveIdx: null);
         }
 
+        var firstMoveIdx = lastBestMoveIdx;
+        if (lastBestMoveIdx == null) {
+          if (depth > -1) {
+            final killerMove = killerMoves[depth];
+            if (killerMove != null) {
+              final idx = moves.indexOf(killerMove);
+              firstMoveIdx = idx == -1 ? null : idx;
+            }
+          }
+        }
+
+        MoveScore moveScore({required double score, required int moveIdx}) {
+          if (depth > 0 && (score >= beta || score <= alpha)) {
+            killerMoves[depth] = moves[moveIdx];
+          }
+          return MoveScore(score: score, moveIdx: moveIdx);
+        }
+
         if (game.isMaxing) {
-          var maxScore = -1.0;
-          if (lastBestMoveIdx != null && lastBestMoveIdx < moves.length) {
+          var maxScore = -2.0;
+          if (firstMoveIdx != null && firstMoveIdx < moves.length) {
             final score =
-                scoreMove(moves[lastBestMoveIdx], game, depth - 1, alpha, beta);
+                scoreMove(moves[firstMoveIdx], game, depth - 1, alpha, beta);
             if (score >= beta && useAlphaBeta) {
-              return MoveScore(score: score, moveIdx: lastBestMoveIdx);
+              return moveScore(score: score, moveIdx: firstMoveIdx);
             }
             maxScore = max(maxScore, score);
             alpha = max(alpha, score);
           }
 
-          var bestMove = lastBestMoveIdx ?? -1;
+          var bestMove = firstMoveIdx ?? -1;
           for (var i = 0; i < moves.length; ++i) {
-            if (i == lastBestMoveIdx) {
+            if (i == firstMoveIdx) {
               continue;
             }
             final move = moves[i];
@@ -310,7 +330,7 @@ class Expectiminimax<G extends Game<G>> {
               bestMove = i;
             }
             if (score >= beta && useAlphaBeta) {
-              return MoveScore(score: score, moveIdx: i);
+              return moveScore(score: score, moveIdx: i);
             }
             maxScore = max(maxScore, score);
             alpha = max(alpha, score);
@@ -318,19 +338,19 @@ class Expectiminimax<G extends Game<G>> {
 
           return MoveScore(score: maxScore, moveIdx: bestMove);
         } else {
-          var minScore = 1.0;
-          if (lastBestMoveIdx != null && lastBestMoveIdx < moves.length) {
+          var minScore = 2.0;
+          if (firstMoveIdx != null && firstMoveIdx < moves.length) {
             final score =
-                scoreMove(moves[lastBestMoveIdx], game, depth - 1, alpha, beta);
+                scoreMove(moves[firstMoveIdx], game, depth - 1, alpha, beta);
             if (score <= alpha && useAlphaBeta) {
-              return MoveScore(score: score, moveIdx: lastBestMoveIdx);
+              return moveScore(score: score, moveIdx: firstMoveIdx);
             }
             minScore = min(minScore, score);
             beta = min(beta, score);
           }
-          var bestMove = lastBestMoveIdx ?? -1;
+          var bestMove = firstMoveIdx ?? -1;
           for (var i = 0; i < moves.length; ++i) {
-            if (i == lastBestMoveIdx) {
+            if (i == firstMoveIdx) {
               continue;
             }
             final move = moves[i];
@@ -339,13 +359,13 @@ class Expectiminimax<G extends Game<G>> {
               bestMove = i;
             }
             if (score <= alpha && useAlphaBeta) {
-              return MoveScore(score: score, moveIdx: i);
+              return moveScore(score: score, moveIdx: i);
             }
             minScore = min(minScore, score);
             beta = min(beta, score);
           }
 
-          return MoveScore(score: minScore, moveIdx: bestMove);
+          return moveScore(score: minScore, moveIdx: bestMove);
         }
       });
 }
