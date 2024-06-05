@@ -56,13 +56,18 @@ class DiceBattle extends Game<DiceBattle> {
     const all = [Fortify(), Invest(), Attack()];
 
     final myScore = p1Turn ? p1Score : p2Score;
+    final oppScore = p1Turn ? p2Score : p1Score;
+    final myDice = p1Turn ? p1DiceScore : p2DiceScore;
     final opDice = p1Turn ? p2DiceScore : p1DiceScore;
 
-    if (opDice > 1 && myScore >= investCost) {
+    final legalToAttack = opDice > 1 && myDice * 6 >= oppScore;
+    final legalToInvest = myScore >= investCost;
+
+    if (legalToAttack && legalToInvest) {
       return all;
-    } else if (opDice == 1 && myScore < investCost) {
+    } else if (!legalToAttack && !legalToInvest) {
       return fortifyOnly;
-    } else if (opDice > 1) {
+    } else if (legalToAttack) {
       return canAttack;
     } else {
       return canInvest;

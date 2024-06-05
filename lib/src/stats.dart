@@ -10,7 +10,7 @@ class SearchStats {
   final List<int> cutoffsByPly;
 
   /// How many cutoffs were performed total (every ply/depth summed).
-  int get totalCutoffs => nodesSearchedByPly.reduce((a, b) => a + b);
+  int get totalCutoffs => cutoffsByPly.reduce((a, b) => a + b);
 
   /// Count of full-width chance node searches (searches with completely
   /// unbounded alpha & beta values).
