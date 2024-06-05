@@ -69,6 +69,21 @@ class DiceBattle extends Game<DiceBattle> {
     }
   }
 
+  DiceBattle adjust({
+    bool flipTurns = false,
+    int curScore = 0,
+    int curDiceScore = 0,
+    int oppScore = 0,
+    int oppDiceScore = 0,
+  }) =>
+      copyWith(
+        p1Turn: flipTurns ? !p1Turn : p1Turn,
+        p1Score: p1Score + (p1Turn ? curScore : oppScore),
+        p1DiceScore: p1DiceScore + (p1Turn ? curDiceScore : oppDiceScore),
+        p2Score: p2Score + (p1Turn ? oppScore : curScore),
+        p2DiceScore: p2DiceScore + (p1Turn ? oppDiceScore : curDiceScore),
+      );
+
   DiceBattle copyWith({
     int? p1Score,
     int? p1DiceScore,
@@ -144,10 +159,9 @@ class Fortify implements Move<DiceBattle> {
 
     final chance = manyRolls(game.roll, rollCount);
 
-    return chance.map((result) => game.copyWith(
-          p1Turn: !game.p1Turn,
-          p1Score: game.p1Turn ? game.p1Score + result : null,
-          p2Score: game.p1Turn ? null : game.p2Score + result,
+    return chance.map((result) => game.adjust(
+          flipTurns: true,
+          curScore: result,
         ));
   }
 }
@@ -160,12 +174,10 @@ class Invest implements Move<DiceBattle> {
 
   @override
   Chance<DiceBattle> perform(DiceBattle game) {
-    return Chance<DiceBattle>.just(game.copyWith(
-      p1Turn: !game.p1Turn,
-      p1Score: game.p1Turn ? game.p1Score - investCost : null,
-      p2Score: game.p1Turn ? null : game.p2Score - investCost,
-      p1DiceScore: game.p1Turn ? game.p1DiceScore + 1 : null,
-      p2DiceScore: game.p1Turn ? null : game.p2DiceScore + 1,
+    return Chance<DiceBattle>.just(game.adjust(
+      flipTurns: true,
+      curScore: -investCost,
+      curDiceScore: 1,
     ));
   }
 }
@@ -193,20 +205,15 @@ class Attack implements Move<DiceBattle> {
 
     return chance.map((hit) {
       if (hit) {
-        return game.copyWith(
-          p1Turn: !game.p1Turn,
-          p1Score: game.p1Turn
-              ? game.p1Score + game.p2DiceScore + attackPointWin
-              : null,
-          p2Score: game.p1Turn
-              ? null
-              : game.p2Score + game.p1DiceScore + attackPointWin,
-          p1DiceScore: game.p1Turn ? null : game.p1DiceScore - 1,
-          p2DiceScore: game.p1Turn ? game.p2DiceScore - 1 : null,
+        return game.adjust(
+          flipTurns: true,
+          curScore: attackPointWin +
+              (game.p1Turn ? game.p2DiceScore : game.p1DiceScore),
+          oppDiceScore: -1,
         );
       } else {
-        return game.copyWith(
-          p1Turn: !game.p1Turn,
+        return game.adjust(
+          flipTurns: true,
         );
       }
     });
