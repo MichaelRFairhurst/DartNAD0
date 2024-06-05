@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
+import 'package:expectiminimax/src/stats.dart';
 import 'package:expectiminimax/src/transposition.dart';
 import 'package:expectiminimax/src/util.dart';
 
@@ -10,10 +11,12 @@ class Expectiminimax<G extends Game<G>> {
     TranspositionTable<G>? transpositionTable,
   })  : transpositionTable =
             transpositionTable ?? TranspositionTable<G>(1024 * 1024),
-        killerMoves = List<Move<G>?>.filled(maxDepth, null, growable: false);
+        killerMoves = List<Move<G>?>.filled(maxDepth, null, growable: false),
+		stats = SearchStats(maxDepth);
 
   final List<Move<G>?> killerMoves;
   final TranspositionTable<G> transpositionTable;
+  final SearchStats stats;
 
   final int maxDepth;
   bool useAlphaBeta = true;
@@ -69,11 +72,16 @@ class Expectiminimax<G extends Game<G>> {
   }
 
   double scoreMove(Move<G> move, G game, int depth, double alpha, double beta) {
+    stats.nodesSearchedByPly[depth]++;
     final chance = move.perform(game);
     if (!useAlphaBeta || (alpha < -1.0 && beta > 1.0)) {
+      stats.fwChanceSearches++;
       return chance
           .expectedValue((g) => checkScoreGame(g, depth - 1, -2.0, 2.0));
     } else if (!useStarMinimax) {
+      if (chance.possibilities.length > 1) {
+        stats.fwChanceSearches++;
+      }
       alpha = chance.possibilities.length == 1 ? alpha : -2.0;
       beta = chance.possibilities.length == 1 ? beta : 2.0;
       return chance
@@ -129,8 +137,10 @@ class Expectiminimax<G extends Game<G>> {
         sumLB += scoresLB[i] * p.probability + p.probability;
         sumUB += scoresUB[i] * p.probability - p.probability;
         if (sumUB <= alpha) {
+          stats.cutoffsByPly[depth]++;
           return sumUB;
         } else if (sumLB >= beta) {
+          stats.cutoffsByPly[depth]++;
           return sumLB;
         }
       }
@@ -225,6 +235,7 @@ class Expectiminimax<G extends Game<G>> {
             return true;
           }());
 
+          stats.cutoffsByPly[depth]++;
           // Careful, returning a sumUB > alpha due to floating point error will
           // look like an exact score rather than an UB.
           return min(sumUB, alpha);
@@ -239,6 +250,7 @@ class Expectiminimax<G extends Game<G>> {
             return true;
           }());
 
+          stats.cutoffsByPly[depth]++;
           // Careful, returning a sumLB < beta due to floating point error will
           // look like an exact score rather than an LB.
           return max(sumLB, beta);
@@ -259,6 +271,7 @@ class Expectiminimax<G extends Game<G>> {
             assert(maxScore <= alpha, '$maxScore is not <= $alpha');
             return true;
           }());
+          stats.cutoffsByPly[depth]++;
           return maxScore;
         } else if (score >= betaP) {
           assert(() {
@@ -268,6 +281,7 @@ class Expectiminimax<G extends Game<G>> {
             assert(maxScore >= beta, '$maxScore is not >= $beta');
             return true;
           }());
+          stats.cutoffsByPly[depth]++;
           return minScore;
         }
       }
@@ -276,98 +290,114 @@ class Expectiminimax<G extends Game<G>> {
     return sum;
   }
 
-  double scoreGame(G game, int depth, double alpha, double beta) =>
-      transpositionTable.scoreTransposition(game, depth, alpha, beta,
-          (int? lastBestMoveIdx) {
-        if (depth <= 0) {
-          return MoveScore(score: game.score, moveIdx: null);
-        }
+  double scoreGame(G game, int depth, double alpha, double beta) {
+    stats.ttLookups++;
+    return transpositionTable.scoreTransposition(game, depth, alpha, beta,
+        (int? lastBestMoveIdx) {
+      stats.ttMisses++;
+      stats.nodesSearchedByPly[max(depth, 0)]++;
+      if (depth <= 0) {
+        return MoveScore(score: game.score, moveIdx: null);
+      }
 
-        final moves = game.getMoves();
+      final moves = game.getMoves();
 
-        if (moves.isEmpty) {
-          return MoveScore(score: game.score, moveIdx: null);
-        }
+      if (moves.isEmpty) {
+        return MoveScore(score: game.score, moveIdx: null);
+      }
 
-        var firstMoveIdx = lastBestMoveIdx;
-        if (lastBestMoveIdx == null) {
-          if (depth > -1) {
-            final killerMove = killerMoves[depth];
-            if (killerMove != null) {
-              final idx = moves.indexOf(killerMove);
-              firstMoveIdx = idx == -1 ? null : idx;
-            }
+      var firstMoveIdx = lastBestMoveIdx;
+      if (lastBestMoveIdx == null) {
+        stats.ttNoFirstMove++;
+
+        if (depth > -1) {
+          final killerMove = killerMoves[depth];
+          if (killerMove != null) {
+            final idx = moves.indexOf(killerMove);
+            firstMoveIdx = idx == -1 ? null : idx;
           }
         }
+      }
 
-        MoveScore moveScore({required double score, required int moveIdx}) {
-          if (depth > 0 && (score >= beta || score <= alpha)) {
-            killerMoves[depth] = moves[moveIdx];
-          }
-          return MoveScore(score: score, moveIdx: moveIdx);
+      MoveScore moveScore({required double score, required int moveIdx}) {
+        if (moveIdx == firstMoveIdx) {
+          stats.firstMoveHits++;
+        } else if (firstMoveIdx == null) {
+          stats.firstMoveMisses++;
         }
 
-        if (game.isMaxing) {
-          var maxScore = -2.0;
-          if (firstMoveIdx != null && firstMoveIdx < moves.length) {
-            final score =
-                scoreMove(moves[firstMoveIdx], game, depth - 1, alpha, beta);
-            if (score >= beta && useAlphaBeta) {
-              return moveScore(score: score, moveIdx: firstMoveIdx);
-            }
-            maxScore = max(maxScore, score);
-            alpha = max(alpha, score);
-          }
-
-          var bestMove = firstMoveIdx ?? -1;
-          for (var i = 0; i < moves.length; ++i) {
-            if (i == firstMoveIdx) {
-              continue;
-            }
-            final move = moves[i];
-            final score = scoreMove(move, game, depth - 1, alpha, beta);
-            if (score > maxScore) {
-              bestMove = i;
-            }
-            if (score >= beta && useAlphaBeta) {
-              return moveScore(score: score, moveIdx: i);
-            }
-            maxScore = max(maxScore, score);
-            alpha = max(alpha, score);
-          }
-
-          return MoveScore(score: maxScore, moveIdx: bestMove);
-        } else {
-          var minScore = 2.0;
-          if (firstMoveIdx != null && firstMoveIdx < moves.length) {
-            final score =
-                scoreMove(moves[firstMoveIdx], game, depth - 1, alpha, beta);
-            if (score <= alpha && useAlphaBeta) {
-              return moveScore(score: score, moveIdx: firstMoveIdx);
-            }
-            minScore = min(minScore, score);
-            beta = min(beta, score);
-          }
-          var bestMove = firstMoveIdx ?? -1;
-          for (var i = 0; i < moves.length; ++i) {
-            if (i == firstMoveIdx) {
-              continue;
-            }
-            final move = moves[i];
-            final score = scoreMove(move, game, depth - 1, alpha, beta);
-            if (score < minScore) {
-              bestMove = i;
-            }
-            if (score <= alpha && useAlphaBeta) {
-              return moveScore(score: score, moveIdx: i);
-            }
-            minScore = min(minScore, score);
-            beta = min(beta, score);
-          }
-
-          return moveScore(score: minScore, moveIdx: bestMove);
+        if (depth > 0 && (score >= beta || score <= alpha)) {
+          killerMoves[depth] = moves[moveIdx];
         }
-      });
+        return MoveScore(score: score, moveIdx: moveIdx);
+      }
+
+      if (game.isMaxing) {
+        var maxScore = -2.0;
+        if (firstMoveIdx != null && firstMoveIdx < moves.length) {
+          final score =
+              scoreMove(moves[firstMoveIdx], game, depth - 1, alpha, beta);
+          if (score >= beta && useAlphaBeta) {
+            stats.cutoffsByPly[depth]++;
+            return moveScore(score: score, moveIdx: firstMoveIdx);
+          }
+          maxScore = max(maxScore, score);
+          alpha = max(alpha, score);
+        }
+
+        var bestMove = firstMoveIdx ?? -1;
+        for (var i = 0; i < moves.length; ++i) {
+          if (i == firstMoveIdx) {
+            continue;
+          }
+          final move = moves[i];
+          final score = scoreMove(move, game, depth - 1, alpha, beta);
+          if (score > maxScore) {
+            bestMove = i;
+          }
+          if (score >= beta && useAlphaBeta) {
+            stats.cutoffsByPly[depth]++;
+            return moveScore(score: score, moveIdx: i);
+          }
+          maxScore = max(maxScore, score);
+          alpha = max(alpha, score);
+        }
+
+        return moveScore(score: maxScore, moveIdx: bestMove);
+      } else {
+        var minScore = 2.0;
+        if (firstMoveIdx != null && firstMoveIdx < moves.length) {
+          final score =
+              scoreMove(moves[firstMoveIdx], game, depth - 1, alpha, beta);
+          if (score <= alpha && useAlphaBeta) {
+            stats.cutoffsByPly[depth]++;
+            return moveScore(score: score, moveIdx: firstMoveIdx);
+          }
+          minScore = min(minScore, score);
+          beta = min(beta, score);
+        }
+        var bestMove = firstMoveIdx ?? -1;
+        for (var i = 0; i < moves.length; ++i) {
+          if (i == firstMoveIdx) {
+            continue;
+          }
+          final move = moves[i];
+          final score = scoreMove(move, game, depth - 1, alpha, beta);
+          if (score < minScore) {
+            bestMove = i;
+          }
+          if (score <= alpha && useAlphaBeta) {
+            stats.cutoffsByPly[depth]++;
+            return moveScore(score: score, moveIdx: i);
+          }
+          minScore = min(minScore, score);
+          beta = min(beta, score);
+        }
+
+        return moveScore(score: minScore, moveIdx: bestMove);
+      }
+    });
+  }
 }
 
 class MoveScore {

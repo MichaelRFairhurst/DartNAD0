@@ -5,6 +5,7 @@ import 'package:expectiminimax/src/expectiminimax.dart';
 import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/roll.dart';
+import 'package:expectiminimax/src/stats.dart';
 
 const winningScore = 20;
 const die = r1d6;
@@ -222,10 +223,12 @@ void main() {
     roll: Roll(),
   );
   final random = Random(0);
+  final maxDepth = 20;
+  final stats = SearchStats(maxDepth);
 
   final start = DateTime.now();
   for (int i = 0; i < 100; ++i) {
-    final expectiminimax = Expectiminimax<DiceBattle>(maxDepth: 20);
+    final expectiminimax = Expectiminimax<DiceBattle>(maxDepth: maxDepth);
     var game = startingGame;
     var turns = 0;
     while (game.score != 1.0 && game.score != -1.0) {
@@ -243,7 +246,9 @@ void main() {
     //print('turns $turns');
     //print('p1: ${game.p1Score} / ${game.p1DiceScore}');
     //print('p2: ${game.p2Score} / ${game.p2DiceScore}');
+    stats.add(expectiminimax.stats);
   }
   final end = DateTime.now();
   print('took ${end.difference(start).inMilliseconds}ms');
+  print(stats);
 }
