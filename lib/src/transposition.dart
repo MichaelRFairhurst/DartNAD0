@@ -60,7 +60,7 @@ class TranspositionTable<G> {
           ..score = moveScore.score
           ..moveIdx = moveScore.moveIdx
           ..constraint = _constraintFor(moveScore.score, alpha, beta);
-		  _setStrict(hash, game);
+        _setStrict(hash, game);
         return moveScore.score;
       }
     }
@@ -156,7 +156,6 @@ class TranspositionTable<G> {
         ..score = score
         ..moveIdx = moveIdx
         ..constraint = constraint;
-
     }
     _setStrict(worstIdx, game);
   }
