@@ -12,7 +12,7 @@ class Expectiminimax<G extends Game<G>> {
   })  : transpositionTable =
             transpositionTable ?? TranspositionTable<G>(1024 * 1024),
         killerMoves = List<Move<G>?>.filled(maxDepth, null, growable: false),
-		stats = SearchStats(maxDepth);
+        stats = SearchStats(maxDepth);
 
   final List<Move<G>?> killerMoves;
   final TranspositionTable<G> transpositionTable;
