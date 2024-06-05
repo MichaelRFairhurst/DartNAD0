@@ -68,7 +68,7 @@ class Expectiminimax<G extends Game<G>> {
 
   double scoreMove(Move<G> move, G game, int depth, double alpha, double beta) {
     final chance = move.perform(game);
-    if (!useAlphaBeta) {
+    if (!useAlphaBeta || (alpha < -1.0 && beta > 1.0)) {
       return chance
           .expectedValue((g) => checkScoreGame(g, depth - 1, -2.0, 2.0));
     } else if (!useStarMinimax) {
@@ -84,9 +84,60 @@ class Expectiminimax<G extends Game<G>> {
           chance.possibilities.single.outcome, depth - 1, alpha, beta);
     }
 
+    // This is better, at least for now, but that's not surprising as it
+    // seems overall to be slower to *any* chance nodes....
+    final probeChanceNodes =
+        chance.possibilities.length < 3 ? false : this.probeChanceNodes;
+
+    final scoresLB =
+        List.filled(chance.possibilities.length, -1.0, growable: false);
+    final scoresUB =
+        List.filled(chance.possibilities.length, 1.0, growable: false);
+
+    double sumLB = -1.0;
+    double sumUB = 1.0;
+    if (probeChanceNodes) {
+      for (var i = 0; i < chance.possibilities.length; ++i) {
+        final p = chance.possibilities[i];
+
+        // Best strategy so far
+        final center = (alpha + beta) / 2;
+
+        // TODO: further evaluate strategies such as these.
+        //final center = (game.isMaxing ? alpha : beta).clamp(-0.5, 0.5);
+        //final center = 0.0;
+        //final center = game.score;
+        //final double center;
+        //if (alpha < -1.0) {
+        //  center = beta;
+        //} else if (beta > 1.0) {
+        //  center = alpha;
+        //} else {
+        //  center = (alpha + beta) / 2;
+        //}
+
+        final zwResult = checkScoreGame(p.outcome, depth - 1, center, center);
+        if (zwResult < center) {
+          // Fudge against floating point error.
+          scoresUB[i] = zwResult + 0.001;
+        } else if (zwResult > center) {
+          // Fudge against floating point error.
+          scoresLB[i] = zwResult - 0.001;
+        }
+        sumLB += scoresLB[i] * p.probability + p.probability;
+        sumUB += scoresUB[i] * p.probability - p.probability;
+        if (sumUB <= alpha) {
+          return sumUB;
+        } else if (sumLB >= beta) {
+          return sumLB;
+        }
+      }
+    }
+
     var sum = 0.0;
     var future = 1.0;
-    for (final p in chance.possibilities) {
+    for (var i = 0; i < chance.possibilities.length; ++i) {
+      final p = chance.possibilities[i];
       future -= p.probability;
 
       const worstAlpha = 1.0;
@@ -106,7 +157,8 @@ class Expectiminimax<G extends Game<G>> {
 
       // Optimization? We can prove without floating multiplication and
       // division that these nodes cannot result in an alpha-beta cutoff.
-      if (future > alpha + p.probability - sum &&
+      if (!probeChanceNodes &&
+          future > alpha + p.probability - sum &&
           future > -beta + p.probability + sum) {
         // Proof of correctness:
         //
@@ -130,34 +182,92 @@ class Expectiminimax<G extends Game<G>> {
         continue;
       }
 
-      final alphaP = (alpha - sum - worstAlpha * future) / p.probability;
-      final betaP = (beta - sum - worstBeta * future) / p.probability;
+      final double alphaP;
+      final double betaP;
+      if (probeChanceNodes) {
+        alphaP =
+            (alpha - (sumUB - scoresUB[i] * p.probability)) / p.probability -
+                0.000001;
+        betaP = (beta - (sumLB - scoresLB[i] * p.probability)) / p.probability +
+            0.000001;
+        assert(() {
+          final alphaPP =
+              (alpha - sum - worstAlpha * future) / p.probability - 0.0000001;
+          final betaPP =
+              (beta - sum - worstBeta * future) / p.probability + 0.0000001;
+          assert(alphaP + 0.0001 >= alphaPP, '$alphaP is not >= $alphaPP');
+          assert(betaP - 0.0001 <= betaPP, '$betaP is not <= $betaPP');
+          return true;
+        }());
+      } else {
+        alphaP =
+            (alpha - sum - worstAlpha * future) / p.probability - 0.0000001;
+        betaP = (beta - sum - worstBeta * future) / p.probability + 0.0000001;
+      }
+
       final score = checkScoreGame(
           p.outcome, depth - 1, max(-2.0, alphaP), min(2.0, betaP));
+
+      if (probeChanceNodes) {
+        sumLB += score * p.probability - scoresLB[i] * p.probability;
+        sumUB += score * p.probability - scoresUB[i] * p.probability;
+
+        if (score <= alphaP) {
+          assert(sumUB <= alpha,
+              'sumUB $sumUB <= alpha $alpha, but $score is not <= $alphaP');
+          assert(() {
+            final checkScore =
+                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            assert(checkScore <= alpha,
+                '$sumUB is <= $alpha, but real score is $checkScore');
+            return true;
+          }());
+
+          // Careful, returning a sumUB > alpha due to floating point error will
+          // look like an exact score rather than an UB.
+          return min(sumUB, alpha);
+        } else if (score >= betaP) {
+          assert(sumLB >= beta,
+              'sumLB $sumLB >= beta $beta, but $score is not >= $betaP');
+          assert(() {
+            final checkScore =
+                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            assert(checkScore >= alpha,
+                '$sumUB is >= $beta, but real score is $checkScore');
+            return true;
+          }());
+
+          // Careful, returning a sumLB < beta due to floating point error will
+          // look like an exact score rather than an LB.
+          return max(sumLB, beta);
+        }
+      }
 
       sum += score * p.probability;
 
       double maxScore = sum + worstAlpha * future;
       double minScore = sum + worstBeta * future;
 
-      if (score <= alphaP) {
-        assert(() {
-          final checkScore =
-              chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
-          assert(checkScore <= alpha, '$checkScore is not <= $alpha');
-          assert(maxScore <= alpha, '$maxScore is not <= $alpha');
-          return true;
-        }());
-        return maxScore;
-      } else if (score >= betaP) {
-        assert(() {
-          final checkScore =
-              chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
-          assert(checkScore >= beta, '$checkScore is not >= $beta');
-          assert(maxScore >= beta, '$maxScore is not >= $beta');
-          return true;
-        }());
-        return minScore;
+      if (!probeChanceNodes) {
+        if (score <= alphaP) {
+          assert(() {
+            final checkScore =
+                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            assert(checkScore <= alpha, '$checkScore is not <= $alpha');
+            assert(maxScore <= alpha, '$maxScore is not <= $alpha');
+            return true;
+          }());
+          return maxScore;
+        } else if (score >= betaP) {
+          assert(() {
+            final checkScore =
+                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            assert(checkScore >= beta, '$checkScore is not >= $beta');
+            assert(maxScore >= beta, '$maxScore is not >= $beta');
+            return true;
+          }());
+          return minScore;
+        }
       }
     }
 
