@@ -179,20 +179,20 @@ class Backgammon extends Game<Backgammon> {
 
     final targetPoint = player1 ? point - roll : point + roll;
     // bearing off
-	if (targetPoint == -1 || targetPoint == boardSize) {
-	  if (exactBearOffAllowed) {
-		// TODO: cache these instances
-		return MoveChecker(point: point, roll: roll);
-	  } else {
-		return null;
-	  }
+    if (targetPoint == -1 || targetPoint == boardSize) {
+      if (exactBearOffAllowed) {
+        // TODO: cache these instances
+        return MoveChecker(point: point, roll: roll);
+      } else {
+        return null;
+      }
     } else if (targetPoint < 0 || targetPoint >= boardSize) {
-	  if (inexactBearOffAllowed) {
-		// TODO: cache these instances
-		return MoveChecker(point: point, roll: roll);
-	  } else {
-		return null;
-	  }
+      if (inexactBearOffAllowed) {
+        // TODO: cache these instances
+        return MoveChecker(point: point, roll: roll);
+      } else {
+        return null;
+      }
     }
 
     final targetVal = points[targetPoint];
@@ -451,6 +451,13 @@ class MoveChecker implements Move<Backgammon> {
       die4: die4,
     ));
   }
+
+  @override
+  bool operator ==(Object? other) =>
+      other is MoveChecker && other.point == point && other.roll == roll;
+
+  @override
+  int get hashCode => roll * boardSize + point;
 }
 
 class Enter implements Move<Backgammon> {
@@ -509,6 +516,12 @@ class Enter implements Move<Backgammon> {
       p2Bar: !game.player1 ? game.p2Bar - 1 : (hitBlot ? game.p2Bar + 1 : null),
     ));
   }
+
+  @override
+  bool operator ==(Object? other) => other is MoveChecker && other.roll == roll;
+
+  @override
+  int get hashCode => roll;
 }
 
 class AbandonTurn implements Move<Backgammon> {
