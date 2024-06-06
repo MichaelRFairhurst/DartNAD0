@@ -281,6 +281,34 @@ class Fortify implements Move<DiceBattle> {
 }
 ```
 
+#### Implement equals/hash code
+
+In order to enable usage of the killer move heuristic, make sure to implement
+`==` (and hashcode)`.
+
+```
+class Enter implements Move<Backgammon> {
+  Enter({required this.point});
+
+  final int point;
+
+  // ...
+
+  @override
+  bool operator==(Object? other) => other is Enter && other.point == point;
+
+  @override
+  int get hashCode => point;
+}
+```
+
+The last move to cause an alpha-beta cutoff at each ply is saved. If a branch in
+that same ply returns that same move in the next `game.getMoves()`, (and no
+other best move saved in the transposition table) it will be checked first which
+is often extremely effective for move ordering. It can only do this if the moves
+are `==` to each other. So this works for `const` `Move`s or `Move`s that define
+`==`.
+
 ### Pick the best move
 
 Lastly, its easy to call the expectiminimax algorithm with your new `Game`:
