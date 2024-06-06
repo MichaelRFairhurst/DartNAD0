@@ -32,6 +32,10 @@ Mildy optimized, use for your own fun!
 - Developer features: Stuff like building in ways to play AIs against each
   other, perft(), and benchmarking improvements.
 - MCTS. It aint expectiminimax, but it is a better choice for some games.
+- Late move reductions
+- Support roll-to-move style games more naturally
+- Configurable search options
+- Principle-Variation search
 
 ## Usage
 
