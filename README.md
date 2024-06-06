@@ -392,3 +392,10 @@ this is to try to return constants from `Game.getMoves`:
 Lastly, effort should be made to optimize the code for performing each move. For
 example, any `Chance<T>` manipulations that will be repeated and can be cached,
 should be.
+
+### perft()
+
+This library includes a function `perft()` that runs on a game and generates all
+of its moves to a specified depth. This simple function is useful in
+benchmarking that your game's move generation code is fast, a key piece of
+overall engine performance.
