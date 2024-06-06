@@ -94,8 +94,8 @@ class Expectiminimax<G extends Game<G>> {
 
     // This is better, at least for now, but that's not surprising as it
     // seems overall to be slower to *any* chance nodes....
-    final probeChanceNodes =
-        chance.possibilities.length < 3 ? false : this.probeChanceNodes;
+    final probeChanceNodes = this.probeChanceNodes &&
+        chance.possibilities.length > 3 && depth > 1;
 
     final scoresLB =
         List.filled(chance.possibilities.length, -1.0, growable: false);
