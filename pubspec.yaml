@@ -7,3 +7,4 @@ environment:
 dependencies:
   test: '^1.6.5'
   mockito: '^4.1.0'
+  collection: ^1.17.0
