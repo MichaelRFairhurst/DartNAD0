@@ -233,6 +233,8 @@ class Expectiminimax<G extends Game<G>> {
           p.outcome, depth - 1, max(-2.0, alphaP), min(2.0, betaP));
 
       if (probeChanceNodes) {
+        assert(score >= scoresLB[i]);
+        assert(score <= scoresUB[i]);
         sumLB += score * p.probability - scoresLB[i] * p.probability;
         sumUB += score * p.probability - scoresUB[i] * p.probability;
 
