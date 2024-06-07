@@ -260,21 +260,40 @@ class Backgammon extends Game<Backgammon> {
   @override
   bool get isMaxing => player1;
 
+  /// Give each player 1 point for each checker for each space it has traveled
+  /// towards home. Checkers on the bar count as 0 and bear-offs as 24.
   @override
   double get score {
-    var player1Checkers =
-        p1Bar + points.fold<int>(0, (acc, next) => acc + max(0, next));
-    var player2Checkers =
-        p2Bar + points.fold<int>(0, (acc, next) => acc + max(0, -next));
+    // Co
+    var p1Score = 0.0;
+    var p2Score = 0.0;
+    // Track checkers we've seen so we can infer bear-off count.
+    var p1Checkers = numCheckers - p1Bar;
+    var p2Checkers = numCheckers - p2Bar;
+    for (int i = 0; i < boardSize; ++i) {
+      // For each checker, give it one point for each space it has traveled
+      // towards home, and track that it hasn't born off.
+      if (points[i] > 0) {
+        p1Score += points[i] * (boardSize - i);
+        p1Checkers -= points[i];
+      } else if (points[i] < 0) {
+        p2Checkers += -points[i];
+        p2Score -= -points[i] * i;
+      }
+    }
 
-    if (player1Checkers == 0) {
+    // Add points for bearing off.
+    p1Score += p1Checkers * boardSize;
+    p2Score += p2Checkers * boardSize;
+
+    const maxScore = numCheckers * boardSize;
+
+    if (p1Checkers == numCheckers) {
       return 1.0;
-    } else if (player2Checkers == 0) {
+    } else if (p2Checkers == numCheckers) {
       return -1.0;
     } else {
-      final p1Score = numCheckers - player1Checkers;
-      final p2Score = numCheckers - player2Checkers;
-      return (p1Score - p2Score) / numCheckers;
+      return p1Score / maxScore - p2Score / maxScore;
     }
   }
 
