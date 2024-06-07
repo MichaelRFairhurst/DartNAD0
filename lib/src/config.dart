@@ -1,5 +1,3 @@
-import 'package:args/command_runner.dart';
-
 /// Config object for defining expectiminimax search parameters.
 class ExpectiminimaxConfig {
   const ExpectiminimaxConfig({
