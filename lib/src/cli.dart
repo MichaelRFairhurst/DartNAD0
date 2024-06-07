@@ -177,8 +177,11 @@ class Compare<G extends Game<G>> extends Command with ParseConfig {
       var game = startingGame;
       var turn = 0;
       if (argResults!['refresh'] && i != 0) {
+        baselineStats.add(baseline.stats);
+        vsStats.add(vs.stats);
+
         baseline = Expectiminimax<G>(config: config);
-        vs = Expectiminimax<G>(config: config);
+        vs = Expectiminimax<G>(config: vsConfig);
       }
 
       while (game.score != 1.0 && game.score != -1.0) {
@@ -195,10 +198,10 @@ class Compare<G extends Game<G>> extends Command with ParseConfig {
         game = outcome.outcome;
         ++turn;
       }
-
-      baselineStats.add(baseline.stats);
-      vsStats.add(vs.stats);
     }
+
+    baselineStats.add(baseline.stats);
+    vsStats.add(vs.stats);
 
     print('Baseline stats:');
     print(baselineStats);
