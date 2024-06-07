@@ -17,7 +17,8 @@ class CliTools<G extends Game<G>> {
     commandRunner
       ..addCommand(PerftCommand(startingGame))
       ..addCommand(WatchGame(startingGame, defaultConfig))
-      ..addCommand(Benchmark(startingGame, defaultConfig));
+      ..addCommand(Benchmark(startingGame, defaultConfig))
+      ..addCommand(Compare(startingGame, defaultConfig));
   }
 
   void run(List<String> args) {
@@ -77,7 +78,7 @@ class WatchGame<G extends Game<G>> extends Command with ParseConfig {
     if (printStats == 'all') {
       print('steps $steps');
       print(expectiminimax.stats);
-	} else if (printStats == 'time') {
+    } else if (printStats == 'time') {
       print('took ${expectiminimax.stats.duration.inMilliseconds}ms');
     }
   }
@@ -133,10 +134,87 @@ class Benchmark<G extends Game<G>> extends Command with ParseConfig {
   }
 }
 
+class Compare<G extends Game<G>> extends Command with ParseConfig {
+  final name = 'compare';
+  final description = 'Compare the performance and/or decisions of two configs,'
+      ' by playing a series of exactly the same games';
+
+  final G startingGame;
+  final ExpectiminimaxConfig defaultConfig;
+
+  Compare(this.startingGame, this.defaultConfig) {
+    addConfigOptions(defaultConfig);
+    addConfigOptions(defaultConfig, 'vs-');
+    argParser.addOption('count',
+        abbr: 'c', defaultsTo: '10', help: 'How many games to play');
+    argParser.addOption('seed',
+        abbr: 's', help: 'Random number generator seed.');
+    argParser.addFlag('refresh',
+        abbr: 'r',
+        help: 'Whether or not to clear cache results between games',
+        defaultsTo: false);
+    argParser.addFlag('choices',
+        help: 'Whether or not to check the choices match',
+        defaultsTo: true);
+  }
+
+  @override
+  void run() {
+    final seed =
+        argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
+    final config = getConfig();
+    final vsConfig = getConfig('vs-');
+    final count = int.parse(argResults!['count']);
+    final compareChoices = argResults!['choices'];
+    final baselineStats = SearchStats(config.maxDepth);
+    final vsStats = SearchStats(config.maxDepth);
+
+    final random = Random(seed);
+    var baseline = Expectiminimax<G>(config: config);
+    var vs = Expectiminimax<G>(config: vsConfig);
+
+    for (var i = 0; i < count; ++i) {
+      var game = startingGame;
+      var turn = 0;
+      if (argResults!['refresh'] && i != 0) {
+        baseline = Expectiminimax<G>(config: config);
+        vs = Expectiminimax<G>(config: config);
+      }
+
+      while (game.score != 1.0 && game.score != -1.0) {
+        final move = baseline.chooseBest(game.getMoves(), game);
+        final vsMove = vs.chooseBest(game.getMoves(), game);
+        if (compareChoices && move != vsMove) {
+          print('Difference on turn $turn, game $i');
+          print('- Baseline chose ${move.description}');
+          print('- Alternate config chose ${vsMove.description}');
+          print('  (choosing baseline move and continuing)');
+        }
+        final chance = move.perform(game);
+        final outcome = chance.pick(random.nextDouble());
+        game = outcome.outcome;
+        ++turn;
+      }
+
+      baselineStats.add(baseline.stats);
+      vsStats.add(vs.stats);
+    }
+
+    print('Baseline stats:');
+    print(baselineStats);
+	print('');
+    print('Alternative stats (--vs-config):');
+    print(vsStats);
+	print('');
+    print('Comparative stats (alternative - baseline):');
+    print(vsStats - baselineStats);
+  }
+}
+
 mixin ParseConfig on Command {
   void addConfigOptions(ExpectiminimaxConfig defaults, [String prefix = '']) {
     argParser.addOption('${prefix}max-depth',
-        abbr: 'd',
+        abbr: prefix == '' ? 'd' : null,
         defaultsTo: defaults.maxDepth.toString(),
         help: 'max depth to search');
     argParser.addFlag('${prefix}iterative-deepening',
