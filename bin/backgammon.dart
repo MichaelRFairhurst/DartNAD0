@@ -1,12 +1,11 @@
 import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:expectiminimax/src/chance.dart';
+import 'package:expectiminimax/src/cli.dart';
 import 'package:expectiminimax/src/dice.dart';
-import 'package:expectiminimax/src/expectiminimax.dart';
 import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/roll.dart';
-import 'package:expectiminimax/src/stats.dart';
 
 final roll = Roll();
 
@@ -541,41 +540,17 @@ class AbandonTurn implements Move<Backgammon> {
       ));
 }
 
-void main() {
-  final startingGame = Backgammon(
-    points: startingBoard,
-    player1: true,
-    p1Bar: 0,
-    p2Bar: 0,
-    die1: 0,
-    die2: 0,
-    die3: 0,
-    die4: 0,
-  );
-
-  final random = Random(0);
-  final maxDepth = 10;
-  final stats = SearchStats(maxDepth);
-
-  final start = DateTime.now();
-  for (int i = 0; i < 1; ++i) {
-    final expectiminimax = Expectiminimax<Backgammon>(maxDepth: maxDepth);
-    var game = startingGame;
-    var turns = 0;
-    while (game.score != 1.0 && game.score != -1.0) {
-      turns++;
-      final Move<Backgammon> move;
-      move = expectiminimax.chooseBest(game.getMoves(), game);
-      print('turn $turns ${move.description}');
-      final chance = move.perform(game);
-      final outcome = chance.pick(random.nextDouble());
-      game = outcome.outcome;
-      print(game);
-    }
-
-    stats.add(expectiminimax.stats);
-  }
-  final end = DateTime.now();
-  print('took ${end.difference(start).inMilliseconds}ms');
-  print(stats);
+void main(List<String> args) {
+  CliTools<Backgammon>(
+    startingGame: Backgammon(
+      points: startingBoard,
+      player1: true,
+      p1Bar: 0,
+      p2Bar: 0,
+      die1: 0,
+      die2: 0,
+      die3: 0,
+      die4: 0,
+    ),
+  ).run(args);
 }

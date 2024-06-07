@@ -6,7 +6,8 @@ Note that expectiminimax is often much slower than minimax as it cannot leverage
 alpha/beta pruning nearly as effectively. In the future I would like to
 parallelize this, etc., and support parallelized MCTS too.
 
-Mildy optimized, use for your own fun!
+Mildy optimized, and comes with prebuilt command line tools, use for your own
+fun!
 
 ## Current features
 
@@ -359,6 +360,44 @@ A simple game loop between two AIs will look like the following:
   }
 ```
 
+## Command line tools
+
+Specify a starting game state to easily make a command line tool for playing and
+benchmarking your game!
+
+```dart
+// bin/my_game.dart
+void main(List<String> args) {
+  final cli = CliTool(
+    startingGame: DiceGame(p1Score: 0, p2Score: 0),
+  );
+
+  return cli.run(args);
+}
+```
+
+Basic usage:
+
+```bash
+# Watch a game of AI vs AI, with searches up to 8 plies in depth
+# Note: pleasant viewership requires your game implement `toString()` :)
+dart bin/my_game.dart watch --max-depth=8
+
+# Run 100 games, searching each move up to 8 plies in depth, and print
+# performance stats.
+dart bin/my_game.dart bench -c 100 --max-depth=8
+
+# Run the 'perft' tool on your game, a useful benchmark measuring how long it
+# takes to perform all possible moves up to 6 moves ahead.
+dart bin/my_game.dart perft --depth=6
+
+# Print out more help:
+dart bin/my_game.dart --help
+dart bin/my_game.dart watch --help
+dart bin/my_game.dart bench --help
+dart bin/my_game.dart perft --help
+```
+
 ## Performance considerations
 
 The most important consideration is branching factor. If your game has a very
@@ -399,3 +438,9 @@ This library includes a function `perft()` that runs on a game and generates all
 of its moves to a specified depth. This simple function is useful in
 benchmarking that your game's move generation code is fast, a key piece of
 overall engine performance.
+
+Run it via command line tools:
+
+```bash
+dart bin/your_game.dart perft --depth 8
+```

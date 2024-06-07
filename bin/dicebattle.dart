@@ -1,11 +1,9 @@
-import 'dart:math';
 import 'package:expectiminimax/src/chance.dart';
+import 'package:expectiminimax/src/cli.dart';
 import 'package:expectiminimax/src/dice.dart';
-import 'package:expectiminimax/src/expectiminimax.dart';
 import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/roll.dart';
-import 'package:expectiminimax/src/stats.dart';
 
 const winningScore = 20;
 const die = r1d6;
@@ -126,6 +124,12 @@ class DiceBattle extends Game<DiceBattle> {
     result = result * 10 + p2DiceScore;
     return result;
   }
+
+  @override
+  String toString() {
+    return 'p1: ${p1Score} / ${p1DiceScore}\n'
+        'p2: ${p2Score} / ${p2DiceScore}';
+  }
 }
 
 class Fortify implements Move<DiceBattle> {
@@ -225,42 +229,17 @@ class Attack implements Move<DiceBattle> {
   }
 }
 
-void main() {
-  final startingGame = DiceBattle(
-    p1Turn: true,
-    p1Score: 0,
-    p1DiceScore: 1,
-    p2Score: 0,
-    p2DiceScore: 1,
-    roll: Roll(),
-  );
-  final random = Random(0);
-  final maxDepth = 20;
-  final stats = SearchStats(maxDepth);
-
-  final start = DateTime.now();
-  for (int i = 0; i < 100; ++i) {
-    final expectiminimax = Expectiminimax<DiceBattle>(maxDepth: maxDepth);
-    var game = startingGame;
-    var turns = 0;
-    while (game.score != 1.0 && game.score != -1.0) {
-      turns++;
-      final Move<DiceBattle> move;
-      move = expectiminimax.chooseBest(game.getMoves(), game);
-      //if (move.description == 'attack') {
-      //  print('turn $turns ${move.description}');
-      //}
-      final chance = move.perform(game);
-      final outcome = chance.pick(random.nextDouble());
-      game = outcome.outcome;
-    }
-
-    //print('turns $turns');
-    //print('p1: ${game.p1Score} / ${game.p1DiceScore}');
-    //print('p2: ${game.p2Score} / ${game.p2DiceScore}');
-    stats.add(expectiminimax.stats);
-  }
-  final end = DateTime.now();
-  print('took ${end.difference(start).inMilliseconds}ms');
-  print(stats);
+void main(List<String> args) {
+  CliTools<DiceBattle>(
+    startingGame: DiceBattle(
+      p1Turn: true,
+      p1Score: 0,
+      p1DiceScore: 1,
+      p1CanAttack: true,
+      p2Score: 0,
+      p2DiceScore: 1,
+      p2CanAttack: true,
+      roll: Roll(),
+    ),
+  ).run(args);
 }
