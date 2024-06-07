@@ -111,7 +111,9 @@ class SearchStats {
   ///
   /// Does not mutate either instance.
   SearchStats operator -(SearchStats other) {
-    return SearchStats(_maxDepth)..add(-this);
+    return SearchStats(_maxDepth)
+      ..add(this)
+      ..subtract(other);
   }
 
   @override
