@@ -154,8 +154,7 @@ class Compare<G extends Game<G>> extends Command with ParseConfig {
         help: 'Whether or not to clear cache results between games',
         defaultsTo: false);
     argParser.addFlag('choices',
-        help: 'Whether or not to check the choices match',
-        defaultsTo: true);
+        help: 'Whether or not to check the choices match', defaultsTo: true);
   }
 
   @override
@@ -205,10 +204,10 @@ class Compare<G extends Game<G>> extends Command with ParseConfig {
 
     print('Baseline stats:');
     print(baselineStats);
-	print('');
+    print('');
     print('Alternative stats (--vs-config):');
     print(vsStats);
-	print('');
+    print('');
     print('Comparative stats (alternative - baseline):');
     print(vsStats - baselineStats);
   }
