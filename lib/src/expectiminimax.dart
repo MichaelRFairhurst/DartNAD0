@@ -17,11 +17,16 @@ class Expectiminimax<G extends Game<G>> {
         stats = SearchStats(config.maxDepth),
         maxDepth = config.maxDepth,
         probeChanceNodes = config.probeChanceNodes,
-        useIterativeDeepening = config.iterativeDeepening;
+        useIterativeDeepening = config.iterativeDeepening,
+        // ignore: deprecated_member_use_from_same_package
+        _debugSetting = config.debugSetting;
 
   final List<Move<G>?> killerMoves;
   final TranspositionTable<G> transpositionTable;
   final SearchStats stats;
+
+  // For internal development only.
+  dynamic _debugSetting;
 
   // Max search depth.
   final int maxDepth;

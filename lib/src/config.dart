@@ -6,6 +6,7 @@ class ExpectiminimaxConfig {
     this.probeChanceNodes = true,
     this.transpositionTableSize = 1024 * 1024,
     this.strictTranspositions = false,
+    @Deprecated('Internal setting for development only.') this.debugSetting,
   });
 
   /// The max depth of plies to search.
@@ -44,6 +45,10 @@ class ExpectiminimaxConfig {
   /// Defaults to false.
   final bool strictTranspositions;
 
+  /// Reserved for debugging/development.
+  @Deprecated('Internal use only.')
+  final dynamic debugSetting;
+
   /// Copy a config with changes to some of its settings.
   ExpectiminimaxConfig copyWith({
     int? maxDepth,
@@ -51,6 +56,7 @@ class ExpectiminimaxConfig {
     bool? probeChanceNodes,
     int? transpositionTableSize,
     bool? strictTranspositions,
+    @Deprecated('Internal use only.') dynamic debugSetting,
   }) =>
       ExpectiminimaxConfig(
         maxDepth: maxDepth ?? this.maxDepth,
@@ -59,5 +65,7 @@ class ExpectiminimaxConfig {
         transpositionTableSize:
             transpositionTableSize ?? this.transpositionTableSize,
         strictTranspositions: strictTranspositions ?? this.strictTranspositions,
+        // ignore: deprecated_member_use_from_same_package
+        debugSetting: debugSetting ?? this.debugSetting,
       );
 }

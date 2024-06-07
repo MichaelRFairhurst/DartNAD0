@@ -231,6 +231,7 @@ mixin ParseConfig on Command {
     argParser.addFlag('${prefix}strict-transpositions',
         defaultsTo: defaults.strictTranspositions,
         help: 'check == on transposition entries to avoid hash collisions');
+    argParser.addOption('${prefix}debug-setting', hide: true);
   }
 
   ExpectiminimaxConfig getConfig([String prefix = '']) {
@@ -241,6 +242,8 @@ mixin ParseConfig on Command {
       transpositionTableSize:
           int.parse(argResults!['${prefix}transposition-table-size']),
       strictTranspositions: argResults!['${prefix}strict-transpositions'],
+      // ignore: deprecated_member_use_from_same_package
+      debugSetting: argResults!['${prefix}debug-setting'],
     );
   }
 }
