@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/expectiminimax.dart';
@@ -10,31 +11,52 @@ import 'package:expectiminimax/src/stats.dart';
 class CliTools<G extends Game<G>> {
   final G startingGame;
   final ExpectiminimaxConfig defaultConfig;
-  final commandRunner = CommandRunner('expectiminimax cli',
-      'Pre-built CLI tools to run expectiminimax on custom games');
 
-  CliTools({required this.startingGame, required this.defaultConfig}) {
-    commandRunner
-      ..addCommand(PerftCommand(startingGame))
-      ..addCommand(WatchGame(startingGame, defaultConfig))
-      ..addCommand(Benchmark(startingGame, defaultConfig))
-      ..addCommand(Compare(startingGame, defaultConfig));
-  }
+  CliTools({required this.startingGame, required this.defaultConfig}) {}
 
   void run(List<String> args) {
-    commandRunner.run(args);
+    // Convert args to a mutable list
+    args = args.toList();
+
+    // Split args by '--vs' into sections
+    final sections = <List<String>>[];
+
+    while (true) {
+      final index = args.indexOf('--vs');
+      if (index == -1) {
+        sections.add(args);
+        break;
+      }
+
+      final section = args.getRange(0, index);
+      sections.add(section.toList());
+      args.removeRange(0, index + 1);
+    }
+
+    final configs = sections.skip(1).toList();
+
+    final commandRunner = CommandRunner('expectiminimax cli',
+        'Pre-built CLI tools to run expectiminimax on custom games')
+      ..addCommand(PerftCommand(startingGame))
+      // TODO: play two AIs against each other
+      ..addCommand(WatchGame(startingGame, defaultConfig, []))
+      // TODO: Distinguish SingleConfigCommand from MultiConfigCommand
+      ..addCommand(Benchmark(startingGame, defaultConfig, []))
+      ..addCommand(Compare(startingGame, defaultConfig, configs));
+
+    commandRunner.run(sections[0]);
   }
 }
 
-class WatchGame<G extends Game<G>> extends Command with ParseConfig {
+class WatchGame<G extends Game<G>> extends ParseConfigCommand {
   final name = 'watch';
   final description = 'Run a game and print out the moves/events/positions.';
 
   final G startingGame;
-  final ExpectiminimaxConfig defaultConfig;
 
-  WatchGame(this.startingGame, this.defaultConfig) {
-    addConfigOptions(defaultConfig);
+  WatchGame(this.startingGame, ExpectiminimaxConfig defaultConfig,
+      List<List<String>> configSpecs)
+      : super(defaultConfig, configSpecs) {
     argParser.addOption('seed',
         abbr: 's', help: 'Random number generator seed.');
     argParser.addOption('print-stats',
@@ -47,8 +69,8 @@ class WatchGame<G extends Game<G>> extends Command with ParseConfig {
   }
 
   @override
-  void run() {
-    final config = getConfig();
+  void runWithConfigs(List<ExpectiminimaxConfig> configs) {
+    final config = configs[0];
     final printStats = argResults!['print-stats'];
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
@@ -84,15 +106,15 @@ class WatchGame<G extends Game<G>> extends Command with ParseConfig {
   }
 }
 
-class Benchmark<G extends Game<G>> extends Command with ParseConfig {
+class Benchmark<G extends Game<G>> extends ParseConfigCommand {
   final name = 'bench';
   final description = 'Play a series of games, tracking performance.';
 
   final G startingGame;
-  final ExpectiminimaxConfig defaultConfig;
 
-  Benchmark(this.startingGame, this.defaultConfig) {
-    addConfigOptions(defaultConfig);
+  Benchmark(this.startingGame, ExpectiminimaxConfig defaultConfig,
+      List<List<String>> configSpecs)
+      : super(defaultConfig, configSpecs) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '20', help: 'How many games to play');
     argParser.addOption('seed',
@@ -104,10 +126,10 @@ class Benchmark<G extends Game<G>> extends Command with ParseConfig {
   }
 
   @override
-  void run() {
+  void runWithConfigs(List<ExpectiminimaxConfig> configs) {
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
-    final config = getConfig();
+    final config = configs[0];
     final count = int.parse(argResults!['count']);
     final stats = SearchStats(config.maxDepth);
 
@@ -134,17 +156,16 @@ class Benchmark<G extends Game<G>> extends Command with ParseConfig {
   }
 }
 
-class Compare<G extends Game<G>> extends Command with ParseConfig {
+class Compare<G extends Game<G>> extends ParseConfigCommand {
   final name = 'compare';
   final description = 'Compare the performance and/or decisions of two configs,'
       ' by playing a series of exactly the same games';
 
   final G startingGame;
-  final ExpectiminimaxConfig defaultConfig;
 
-  Compare(this.startingGame, this.defaultConfig) {
-    addConfigOptions(defaultConfig);
-    addConfigOptions(defaultConfig, 'vs-');
+  Compare(this.startingGame, ExpectiminimaxConfig defaultConfig,
+      List<List<String>> configSpecs)
+      : super(defaultConfig, configSpecs) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '10', help: 'How many games to play');
     argParser.addOption('seed',
@@ -158,39 +179,39 @@ class Compare<G extends Game<G>> extends Command with ParseConfig {
   }
 
   @override
-  void run() {
+  void runWithConfigs(List<ExpectiminimaxConfig> configs) {
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
-    final config = getConfig();
-    final vsConfig = getConfig('vs-');
+    final config = configs[0];
+    final vsConfig = configs[1];
     final count = int.parse(argResults!['count']);
     final compareChoices = argResults!['choices'];
-    final baselineStats = SearchStats(config.maxDepth);
-    final vsStats = SearchStats(vsConfig.maxDepth);
 
     final random = Random(seed);
-    var baseline = Expectiminimax<G>(config: config);
-    var vs = Expectiminimax<G>(config: vsConfig);
+    var algs = configs.map((c) => Expectiminimax<G>(config: c)).toList();
+    final stats = configs.map((c) => SearchStats(c.maxDepth)).toList();
 
     for (var i = 0; i < count; ++i) {
       var game = startingGame;
       var turn = 0;
       if (argResults!['refresh'] && i != 0) {
-        baselineStats.add(baseline.stats);
-        vsStats.add(vs.stats);
-
-        baseline = Expectiminimax<G>(config: config);
-        vs = Expectiminimax<G>(config: vsConfig);
+        for (var c = 0; c < configs.length; ++c) {
+          stats[c].add(algs[c].stats);
+          algs[c] = Expectiminimax<G>(config: configs[c]);
+        }
       }
 
       while (game.score != 1.0 && game.score != -1.0) {
-        final move = baseline.chooseBest(game.getMoves(), game);
-        final vsMove = vs.chooseBest(game.getMoves(), game);
-        if (compareChoices && move != vsMove) {
-          print('Difference on turn $turn, game $i');
-          print('- Baseline chose ${move.description}');
-          print('- Alternate config chose ${vsMove.description}');
-          print('  (choosing baseline move and continuing)');
+        final moves = game.getMoves();
+        final move = algs[0].chooseBest(moves, game);
+        for (var c = 1; c < configs.length; ++c) {
+          final vsMove = algs[c].chooseBest(moves, game);
+          if (compareChoices && move != vsMove) {
+            print('Difference on turn $turn, game $i');
+            print('- Baseline chose ${move.description}');
+            print('- Alternate config $c chose ${vsMove.description}');
+            print('  (choosing baseline move and continuing)');
+          }
         }
         final chance = move.perform(game);
         final outcome = chance.pick(random.nextDouble());
@@ -199,51 +220,82 @@ class Compare<G extends Game<G>> extends Command with ParseConfig {
       }
     }
 
-    baselineStats.add(baseline.stats);
-    vsStats.add(vs.stats);
+    for (var c = 0; c < configs.length; ++c) {
+      stats[c].add(algs[c].stats);
+      algs[c] = Expectiminimax<G>(config: configs[c]);
+    }
 
     print('Baseline stats:');
-    print(baselineStats);
-    print('');
-    print('Alternative stats (--vs-config):');
-    print(vsStats);
-    print('');
-    print('Comparative stats (alternative - baseline):');
-    print(vsStats - baselineStats);
+    print(stats[0]);
+    for (var c = 1; c < configs.length; ++c) {
+      print('');
+      print('Alternative stats #$c (--vs):');
+      print(stats[c]);
+    }
+    for (var c = 1; c < configs.length; ++c) {
+      print('');
+      print('Comparative stats (alternative #$c - baseline):');
+      print(stats[c] - stats[0]);
+    }
   }
 }
 
-mixin ParseConfig on Command {
-  void addConfigOptions(ExpectiminimaxConfig defaults, [String prefix = '']) {
-    argParser.addOption('${prefix}max-depth',
-        abbr: prefix == '' ? 'd' : null,
-        defaultsTo: defaults.maxDepth.toString(),
-        help: 'max depth to search');
-    argParser.addFlag('${prefix}iterative-deepening',
-        defaultsTo: defaults.iterativeDeepening,
-        help: 'enable iterative deepening');
-    argParser.addFlag('${prefix}probe-chance-nodes',
-        defaultsTo: defaults.probeChanceNodes,
-        help: 'enable probing phase on chance nodes');
-    argParser.addOption('${prefix}transposition-table-size',
-        defaultsTo: defaults.transpositionTableSize.toString(),
-        help: 'size (in entry count) of transposition table');
-    argParser.addFlag('${prefix}strict-transpositions',
-        defaultsTo: defaults.strictTranspositions,
-        help: 'check == on transposition entries to avoid hash collisions');
-    argParser.addOption('${prefix}debug-setting', hide: true);
+abstract class ParseConfigCommand extends Command {
+  List<List<String>> configSpecs;
+  final ExpectiminimaxConfig defaultConfig;
+
+  ParseConfigCommand(this.defaultConfig, this.configSpecs) {
+    addConfigOptionsToParser(argParser, defaultConfig);
   }
 
-  ExpectiminimaxConfig getConfig([String prefix = '']) {
-    return ExpectiminimaxConfig(
-      maxDepth: int.parse(argResults!['${prefix}max-depth']),
-      iterativeDeepening: argResults!['${prefix}iterative-deepening'],
-      probeChanceNodes: argResults!['${prefix}probe-chance-nodes'],
-      transpositionTableSize:
-          int.parse(argResults!['${prefix}transposition-table-size']),
-      strictTranspositions: argResults!['${prefix}strict-transpositions'],
-      // ignore: deprecated_member_use_from_same_package
-      debugSetting: argResults!['${prefix}debug-setting'],
-    );
+  void runWithConfigs(List<ExpectiminimaxConfig> configs);
+
+  @override
+  void run() {
+    final configParser = ArgParser(allowTrailingOptions: false);
+    addConfigOptionsToParser(configParser, defaultConfig);
+
+    final configs = [
+      getPrimaryConfig(),
+      ...configSpecs
+          .map((args) => getConfigFromResults(configParser.parse(args)))
+          .toList(),
+    ];
+
+    runWithConfigs(configs);
   }
+
+  void addConfigOptionsToParser(
+          ArgParser parser, ExpectiminimaxConfig defaults) =>
+      parser
+        ..addOption('max-depth',
+            abbr: 'd',
+            defaultsTo: defaults.maxDepth.toString(),
+            help: 'max depth to search')
+        ..addFlag('iterative-deepening',
+            defaultsTo: defaults.iterativeDeepening,
+            help: 'enable iterative deepening')
+        ..addFlag('probe-chance-nodes',
+            defaultsTo: defaults.probeChanceNodes,
+            help: 'enable probing phase on chance nodes')
+        ..addOption('transposition-table-size',
+            defaultsTo: defaults.transpositionTableSize.toString(),
+            help: 'size (in entry count) of transposition table')
+        ..addFlag('strict-transpositions',
+            defaultsTo: defaults.strictTranspositions,
+            help: 'check == on transposition entries to avoid hash collisions')
+        ..addOption('debug-setting', hide: true);
+
+  ExpectiminimaxConfig getPrimaryConfig() => getConfigFromResults(argResults!);
+
+  ExpectiminimaxConfig getConfigFromResults(ArgResults results) =>
+      ExpectiminimaxConfig(
+        maxDepth: int.parse(results['max-depth']),
+        iterativeDeepening: results['iterative-deepening'],
+        probeChanceNodes: results['probe-chance-nodes'],
+        transpositionTableSize: int.parse(results['transposition-table-size']),
+        strictTranspositions: results['strict-transpositions'],
+        // ignore: deprecated_member_use_from_same_package
+        debugSetting: results['debug-setting'],
+      );
 }
