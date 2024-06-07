@@ -36,8 +36,11 @@ class WatchGame<G extends Game<G>> extends Command with ParseConfig {
     addConfigOptions(defaultConfig);
     argParser.addOption('seed',
         abbr: 's', help: 'Random number generator seed.');
-    argParser.addFlag('print-stats',
-        abbr: 'p', help: 'Print stats when the game is finished.');
+    argParser.addOption('print-stats',
+        abbr: 'p',
+        help: 'Which stats to print (if any) when the game is finished.',
+        allowed: const ['time', 'all', 'none'],
+        defaultsTo: 'time');
     argParser.addFlag('print-timing',
         abbr: 't', help: 'Print timing when the game is finished.');
   }
@@ -45,12 +48,12 @@ class WatchGame<G extends Game<G>> extends Command with ParseConfig {
   @override
   void run() {
     final config = getConfig();
+    final printStats = argResults!['print-stats'];
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
 
     final random = Random(seed);
     var expectiminimax = Expectiminimax<G>(config: config);
-    final start = DateTime.now();
     var game = startingGame;
     var steps = 0;
     while (game.score != 1.0 && game.score != -1.0) {
@@ -71,14 +74,11 @@ class WatchGame<G extends Game<G>> extends Command with ParseConfig {
     print('GAME OVER!');
     print('');
 
-    final end = DateTime.now();
-    if (argResults!['print-timing']) {
-      print('took ${end.difference(start).inMilliseconds}ms');
-    }
-
-    if (argResults!['print-stats']) {
+    if (printStats == 'all') {
       print('steps $steps');
       print(expectiminimax.stats);
+	} else if (printStats == 'time') {
+      print('took ${expectiminimax.stats.duration.inMilliseconds}ms');
     }
   }
 }
@@ -112,7 +112,6 @@ class Benchmark<G extends Game<G>> extends Command with ParseConfig {
 
     final random = Random(seed);
     var expectiminimax = Expectiminimax<G>(config: config);
-    final start = DateTime.now();
 
     for (var i = 0; i < count; ++i) {
       var game = startingGame;
@@ -130,8 +129,6 @@ class Benchmark<G extends Game<G>> extends Command with ParseConfig {
       stats.add(expectiminimax.stats);
     }
 
-    final end = DateTime.now();
-    print('took ${end.difference(start).inMilliseconds}ms');
     print(stats);
   }
 }

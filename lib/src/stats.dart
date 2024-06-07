@@ -10,6 +10,9 @@ class SearchStats {
   /// Track the max depth for the purposes of adding/comparing stat reports.
   final int _maxDepth;
 
+  /// How much time has been spent searching.
+  Duration duration = Duration.zero;
+
   /// How many alpha/beta cutoffs were performed at each ply (depth).
   final List<int> cutoffsByPly;
 
@@ -53,6 +56,7 @@ class SearchStats {
   /// This will mutate the current instance but not the provided SearchStats.
   void add(SearchStats other) {
     // TODO: compare _maxDepths
+    duration += other.duration;
     ttLookups += other.ttLookups;
     ttMisses += other.ttMisses;
     fwChanceSearches += other.fwChanceSearches;
@@ -71,6 +75,7 @@ class SearchStats {
   /// This will mutate the current instance but not the provided SearchStats.
   void subtract(SearchStats other) {
     // TODO: compare _maxDepths
+    duration -= other.duration;
     ttLookups -= other.ttLookups;
     ttMisses -= other.ttMisses;
     fwChanceSearches -= other.fwChanceSearches;
@@ -111,7 +116,8 @@ class SearchStats {
 
   @override
   String toString() {
-    return 'nodes searched: $nodesSearched :: $nodesSearchedByPly\n'
+    return 'Total time: ${duration.inMilliseconds}ms\n'
+        'nodes searched: $nodesSearched :: $nodesSearchedByPly\n'
         'cutoffs: $totalCutoffs :: $cutoffsByPly\n'
         'full width chance searches: $fwChanceSearches\n'
         'tt lookups $ttLookups hits $ttHits, perc ${ttHits / ttLookups}\n'
