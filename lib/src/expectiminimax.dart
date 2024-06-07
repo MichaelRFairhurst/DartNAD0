@@ -39,6 +39,7 @@ class Expectiminimax<G extends Game<G>> {
   final bool useIterativeDeepening;
 
   Move<G> chooseBest(List<Move<G>> moves, G game) {
+    final start = DateTime.now();
     final alpha = -2.0;
     final beta = 2.0;
 
@@ -51,13 +52,18 @@ class Expectiminimax<G extends Game<G>> {
     }
 
     // Final scoring.
+    Move<G> bestMove;
     if (game.isMaxing) {
-      return bestBy<Move<G>, num>(
+      bestMove = bestBy<Move<G>, num>(
           moves, (m) => scoreMove(m, game, maxDepth, alpha, beta))!;
     } else {
-      return bestBy<Move<G>, num>(
+      bestMove = bestBy<Move<G>, num>(
           moves, (m) => -scoreMove(m, game, maxDepth, alpha, beta))!;
     }
+
+    stats.duration += DateTime.now().difference(start);
+
+    return bestMove;
   }
 
   double checkScoreGame(G game, int depth, double alpha, double beta) {
