@@ -449,6 +449,8 @@ class MoveChecker implements Move<Backgammon> {
       die2: die2,
       die3: die3,
       die4: die4,
+      p1Bar: !game.player1 && hitBlot ? game.p1Bar + 1 : null,
+      p2Bar: game.player1 && hitBlot ? game.p2Bar + 1 : null,
     ));
   }
 
@@ -518,7 +520,7 @@ class Enter implements Move<Backgammon> {
   }
 
   @override
-  bool operator ==(Object? other) => other is MoveChecker && other.roll == roll;
+  bool operator ==(Object? other) => other is Enter && other.roll == roll;
 
   @override
   int get hashCode => roll;
