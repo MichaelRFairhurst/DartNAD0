@@ -1,3 +1,5 @@
+import 'dart:math';
+
 /// A collection of metrics about search performance.
 ///
 /// Note, ensure you initialize this with the proper depth!
@@ -55,7 +57,9 @@ class SearchStats {
   ///
   /// This will mutate the current instance but not the provided SearchStats.
   void add(SearchStats other) {
-    // TODO: compare _maxDepths
+    if (other._maxDepth > _maxDepth) {
+      throw 'Cannot add provided stats, depth exceeds current stats.';
+    }
     duration += other.duration;
     ttLookups += other.ttLookups;
     ttMisses += other.ttMisses;
@@ -63,9 +67,10 @@ class SearchStats {
     firstMoveHits += other.firstMoveHits;
     firstMoveMisses += other.firstMoveMisses;
     ttNoFirstMove += other.ttNoFirstMove;
-    for (int i = 0; i < _maxDepth; ++i) {
-      cutoffsByPly[i] += other.cutoffsByPly[i];
-      nodesSearchedByPly[i] += other.nodesSearchedByPly[i];
+    int depthDiff = _maxDepth - other._maxDepth;
+    for (int i = depthDiff; i < _maxDepth; ++i) {
+      cutoffsByPly[i] += other.cutoffsByPly[i - depthDiff];
+      nodesSearchedByPly[i] += other.nodesSearchedByPly[i - depthDiff];
     }
   }
 
@@ -74,7 +79,9 @@ class SearchStats {
   ///
   /// This will mutate the current instance but not the provided SearchStats.
   void subtract(SearchStats other) {
-    // TODO: compare _maxDepths
+    if (other._maxDepth > _maxDepth) {
+      throw 'Cannot subtract provided stats, depth exceeds current stats.';
+    }
     duration -= other.duration;
     ttLookups -= other.ttLookups;
     ttMisses -= other.ttMisses;
@@ -82,9 +89,10 @@ class SearchStats {
     firstMoveHits -= other.firstMoveHits;
     firstMoveMisses -= other.firstMoveMisses;
     ttNoFirstMove -= other.ttNoFirstMove;
-    for (int i = 0; i < _maxDepth; ++i) {
-      cutoffsByPly[i] -= other.cutoffsByPly[i];
-      nodesSearchedByPly[i] -= other.nodesSearchedByPly[i];
+    int depthDiff = _maxDepth - other._maxDepth;
+    for (int i = depthDiff; i < _maxDepth; ++i) {
+      cutoffsByPly[i] -= other.cutoffsByPly[i + depthDiff];
+      nodesSearchedByPly[i] -= other.nodesSearchedByPly[i + depthDiff];
     }
   }
 
@@ -93,8 +101,7 @@ class SearchStats {
   ///
   /// Does not mutate either instance.
   SearchStats operator +(SearchStats other) {
-    // TODO: compare _maxDepths
-    return SearchStats(_maxDepth)
+    return SearchStats(max(_maxDepth, other._maxDepth))
       ..add(this)
       ..add(other);
   }
@@ -111,7 +118,7 @@ class SearchStats {
   ///
   /// Does not mutate either instance.
   SearchStats operator -(SearchStats other) {
-    return SearchStats(_maxDepth)
+    return SearchStats(max(_maxDepth, other._maxDepth))
       ..add(this)
       ..subtract(other);
   }

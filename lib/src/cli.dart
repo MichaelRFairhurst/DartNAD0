@@ -167,7 +167,7 @@ class Compare<G extends Game<G>> extends Command with ParseConfig {
     final count = int.parse(argResults!['count']);
     final compareChoices = argResults!['choices'];
     final baselineStats = SearchStats(config.maxDepth);
-    final vsStats = SearchStats(config.maxDepth);
+    final vsStats = SearchStats(vsConfig.maxDepth);
 
     final random = Random(seed);
     var baseline = Expectiminimax<G>(config: config);
