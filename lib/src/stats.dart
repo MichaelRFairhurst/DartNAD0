@@ -2,9 +2,13 @@
 ///
 /// Note, ensure you initialize this with the proper depth!
 class SearchStats {
-  SearchStats(int maxDepth)
-      : cutoffsByPly = List<int>.filled(maxDepth, 0, growable: false),
-        nodesSearchedByPly = List<int>.filled(maxDepth + 1, 0, growable: false);
+  SearchStats(this._maxDepth)
+      : cutoffsByPly = List<int>.filled(_maxDepth, 0, growable: false),
+        nodesSearchedByPly =
+            List<int>.filled(_maxDepth + 1, 0, growable: false);
+
+  /// Track the max depth for the purposes of adding/comparing stat reports.
+  final int _maxDepth;
 
   /// How many alpha/beta cutoffs were performed at each ply (depth).
   final List<int> cutoffsByPly;
@@ -45,17 +49,64 @@ class SearchStats {
 
   /// Add all event counts (cutoffs, nodes searched, transposition table hits
   /// and misses, etc) to these stats.
+  ///
+  /// This will mutate the current instance but not the provided SearchStats.
   void add(SearchStats other) {
+    // TODO: compare _maxDepths
     ttLookups += other.ttLookups;
     ttMisses += other.ttMisses;
     fwChanceSearches += other.fwChanceSearches;
     firstMoveHits += other.firstMoveHits;
     firstMoveMisses += other.firstMoveMisses;
     ttNoFirstMove += other.ttNoFirstMove;
-    for (int i = 0; i < 20; ++i) {
+    for (int i = 0; i < _maxDepth; ++i) {
       cutoffsByPly[i] += other.cutoffsByPly[i];
       nodesSearchedByPly[i] += other.nodesSearchedByPly[i];
     }
+  }
+
+  /// Subtract the [other] search stats from these stats, to get comparative
+  /// numbers between them, and return the result in a new instance.
+  ///
+  /// This will mutate the current instance but not the provided SearchStats.
+  void subtract(SearchStats other) {
+    // TODO: compare _maxDepths
+    ttLookups -= other.ttLookups;
+    ttMisses -= other.ttMisses;
+    fwChanceSearches -= other.fwChanceSearches;
+    firstMoveHits -= other.firstMoveHits;
+    firstMoveMisses -= other.firstMoveMisses;
+    ttNoFirstMove -= other.ttNoFirstMove;
+    for (int i = 0; i < _maxDepth; ++i) {
+      cutoffsByPly[i] -= other.cutoffsByPly[i];
+      nodesSearchedByPly[i] -= other.nodesSearchedByPly[i];
+    }
+  }
+
+  /// Add the [other] search stats to these stats, to get cumulative numbers
+  /// between them, and return the result in a new instance.
+  ///
+  /// Does not mutate either instance.
+  SearchStats operator +(SearchStats other) {
+    // TODO: compare _maxDepths
+    return SearchStats(_maxDepth)
+      ..add(this)
+      ..add(other);
+  }
+
+  /// Negate these stats, and return the result in a new instance.
+  ///
+  /// Does not mutate this instance.
+  SearchStats operator -() {
+    return SearchStats(_maxDepth)..subtract(this);
+  }
+
+  /// Subtract the [other] search stats from these stats, to get comparative
+  /// numbers between them, and return the result in a new instance.
+  ///
+  /// Does not mutate either instance.
+  SearchStats operator -(SearchStats other) {
+    return SearchStats(_maxDepth)..add(-this);
   }
 
   @override
