@@ -112,10 +112,7 @@ class Expectiminimax<G extends Game<G>> {
           chance.possibilities.single.outcome, depth - 1, alpha, beta);
     }
 
-    // This is better, at least for now, but that's not surprising as it
-    // seems overall to be slower to *any* chance nodes....
-    final probeChanceNodes = this.probeChanceNodes &&
-        chance.possibilities.length > 3 && depth > 1;
+    final probeChanceNodes = this.probeChanceNodes && depth > 1;
 
     final scoresLB =
         List.filled(chance.possibilities.length, -1.0, growable: false);
@@ -128,30 +125,29 @@ class Expectiminimax<G extends Game<G>> {
       for (var i = 0; i < chance.possibilities.length; ++i) {
         final p = chance.possibilities[i];
 
-        // Best strategy so far
-        final center = (alpha + beta) / 2;
-
-        // TODO: further evaluate strategies such as these.
-        //final center = (game.isMaxing ? alpha : beta).clamp(-0.5, 0.5);
-        //final center = 0.0;
-        //final center = game.score;
-        //final double center;
-        //if (alpha < -1.0) {
-        //  center = beta;
-        //} else if (beta > 1.0) {
-        //  center = alpha;
-        //} else {
-        //  center = (alpha + beta) / 2;
-        //}
-
-        final zwResult = checkScoreGame(p.outcome, depth - 1, center, center);
-        if (zwResult < center) {
+        if (alpha > -1.0) {
+          // Check if this score exceeds alpha, to quickly get an upper bound.
+          // TODO: instead of 2.0, identify the beta value that will cut off.
+          final ubSearch = checkScoreGame(p.outcome, depth - 1, alpha, 2.0);
           // Fudge against floating point error.
-          scoresUB[i] = zwResult + 0.001;
-        } else if (zwResult > center) {
-          // Fudge against floating point error.
-          scoresLB[i] = zwResult - 0.001;
+          scoresUB[i] = ubSearch + 0.001;
+          if (ubSearch >= alpha) {
+            scoresLB[i] = ubSearch - 0.001;
+          }
         }
+
+        if (beta < 1.0 && alpha != beta && scoresUB[i] != scoresLB[i]) {
+          // Check if this score exceeds beta, to quickly get an lower bound.
+          // TODO: instead of -2.0, identify the alpha value that will cut off.
+          final lbSearch = checkScoreGame(p.outcome, depth - 1, -2.0, beta);
+          // Fudge against floating point error.
+          scoresLB[i] = max(scoresLB[i], lbSearch);
+          if (lbSearch <= beta) {
+            scoresUB[i] = min(scoresUB[i], lbSearch + 0.001);
+          }
+        }
+
+        // TODO: Check cutoff conditions before doing the lower bound search too
         sumLB += scoresLB[i] * p.probability + p.probability;
         sumUB += scoresUB[i] * p.probability - p.probability;
         if (sumUB <= alpha) {
@@ -163,7 +159,7 @@ class Expectiminimax<G extends Game<G>> {
                 '$sumUB is <= $alpha, but real score is $checkScore');
             return true;
           }());
-          return sumUB;
+          return sumUB.clamp(-2.0, 2.0);
         } else if (sumLB >= beta) {
           stats.cutoffsByPly[depth]++;
           assert(() {
@@ -173,7 +169,11 @@ class Expectiminimax<G extends Game<G>> {
                 '$sumUB is >= $beta, but real score is $checkScore');
             return true;
           }());
-          return sumLB;
+          return sumLB.clamp(-2.0, 2.0);
+        }
+
+        if (sumLB > alpha && sumUB < beta) {
+          break;
         }
       }
     }
@@ -181,6 +181,11 @@ class Expectiminimax<G extends Game<G>> {
     var sum = 0.0;
     var future = 1.0;
     for (var i = 0; i < chance.possibilities.length; ++i) {
+      if (probeChanceNodes && scoresLB[i] == scoresUB[i]) {
+        sum += scoresLB[i];
+        continue;
+      }
+
       final p = chance.possibilities[i];
       future -= p.probability;
 
@@ -272,7 +277,7 @@ class Expectiminimax<G extends Game<G>> {
           stats.cutoffsByPly[depth]++;
           // Careful, returning a sumUB > alpha due to floating point error will
           // look like an exact score rather than an UB.
-          return min(sumUB, alpha);
+          return min(sumUB, alpha).clamp(-2.0, 2.0);
         } else if (score >= betaP) {
           assert(sumLB >= beta,
               'sumLB $sumLB >= beta $beta, but $score is not >= $betaP');
@@ -287,7 +292,7 @@ class Expectiminimax<G extends Game<G>> {
           stats.cutoffsByPly[depth]++;
           // Careful, returning a sumLB < beta due to floating point error will
           // look like an exact score rather than an LB.
-          return max(sumLB, beta);
+          return max(sumLB, beta).clamp(-2.0, 2.0);
         }
       }
 
@@ -379,7 +384,7 @@ class Expectiminimax<G extends Game<G>> {
           alpha = max(alpha, score);
         }
 
-        var bestMove = firstMoveIdx ?? -1;
+        var bestMove = firstMoveIdx ?? 0;
         for (var i = 0; i < moves.length; ++i) {
           if (i == firstMoveIdx) {
             continue;
@@ -410,7 +415,7 @@ class Expectiminimax<G extends Game<G>> {
           minScore = min(minScore, score);
           beta = min(beta, score);
         }
-        var bestMove = firstMoveIdx ?? -1;
+        var bestMove = firstMoveIdx ?? 0;
         for (var i = 0; i < moves.length; ++i) {
           if (i == firstMoveIdx) {
             continue;

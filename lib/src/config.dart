@@ -3,7 +3,7 @@ class ExpectiminimaxConfig {
   const ExpectiminimaxConfig({
     required this.maxDepth,
     this.iterativeDeepening = false,
-    this.probeChanceNodes = false,
+    this.probeChanceNodes = true,
     this.transpositionTableSize = 1024 * 1024,
     this.strictTranspositions = false,
   });
@@ -24,10 +24,10 @@ class ExpectiminimaxConfig {
   /// Whether to use probing on chance node children in order to more quickly
   /// establish a lower/upper bound before a second full search pass.
   ///
-  /// According to sources, this technique can result in performance increases
-  /// by producing additional cutoffs.
+  /// This technique can result in performance increases, but it can also reduce
+  /// performance in some cases.
   ///
-  /// Defaults to false, pending further exploration.
+  /// Defaults to true.
   final bool probeChanceNodes;
 
   /// How many entries to store in the transposition table.

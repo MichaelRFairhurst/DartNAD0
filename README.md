@@ -13,14 +13,13 @@ fun!
 
 - transposition tables
 - minimax-style alpha-beta pruning (for deterministic nodes)
-- \*-minimax (alpha beta pruning on CHANCE nodes)
 - move ordering (based on best move stored in transition tables)
 - killer move heuristic
+- \*-minimax (alpha beta pruning on CHANCE nodes)
+- star2-style probing pass on CHANCE descendents
 
 ## TODO
 
-- '\*-minimax2' pruning (probing pass on CHANCE descendents): implemented but
-  does not seem to perform well currently.
 - Iterative deepening: implemented but not meeting requirements to perform well
   currentl.
 - Concurrency: will be hard to do anything like lazy SMP in Dart. We could
