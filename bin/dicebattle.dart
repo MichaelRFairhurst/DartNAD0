@@ -1,5 +1,6 @@
 import 'package:expectiminimax/src/chance.dart';
 import 'package:expectiminimax/src/cli.dart';
+import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/dice.dart';
 import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
@@ -231,6 +232,9 @@ class Attack implements Move<DiceBattle> {
 
 void main(List<String> args) {
   CliTools<DiceBattle>(
+    defaultConfig: ExpectiminimaxConfig(
+      maxDepth: 20,
+    ),
     startingGame: DiceBattle(
       p1Turn: true,
       p1Score: 0,

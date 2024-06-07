@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/stats.dart';
@@ -7,22 +8,35 @@ import 'package:expectiminimax/src/util.dart';
 
 class Expectiminimax<G extends Game<G>> {
   Expectiminimax({
-    required this.maxDepth,
+    required ExpectiminimaxConfig config,
     TranspositionTable<G>? transpositionTable,
-  })  : transpositionTable =
-            transpositionTable ?? TranspositionTable<G>(1024 * 1024),
-        killerMoves = List<Move<G>?>.filled(maxDepth, null, growable: false),
-        stats = SearchStats(maxDepth);
+  })  : transpositionTable = transpositionTable ??
+            TranspositionTable<G>(config.transpositionTableSize),
+        killerMoves =
+            List<Move<G>?>.filled(config.maxDepth, null, growable: false),
+        stats = SearchStats(config.maxDepth),
+        maxDepth = config.maxDepth,
+        probeChanceNodes = config.probeChanceNodes,
+        useIterativeDeepening = config.iterativeDeepening;
 
   final List<Move<G>?> killerMoves;
   final TranspositionTable<G> transpositionTable;
   final SearchStats stats;
 
+  // Max search depth.
   final int maxDepth;
-  bool useAlphaBeta = true;
-  bool useStarMinimax = true;
-  bool probeChanceNodes = true;
-  bool useIterativeDeepening = false;
+
+  // Feature permanently turned on, but, disableable for debugging etc.
+  static const bool useAlphaBeta = true;
+
+  // Feature permanently turned on, but, disableable for debugging etc.
+  static const bool useStarMinimax = true;
+
+  // Experimental feature, can be turned on or off.
+  final bool probeChanceNodes;
+
+  // Experimental feature, can be turned on or off.
+  final bool useIterativeDeepening;
 
   Move<G> chooseBest(List<Move<G>> moves, G game) {
     final alpha = -2.0;
