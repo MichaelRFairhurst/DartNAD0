@@ -3,7 +3,7 @@ class ExpectiminimaxConfig {
   const ExpectiminimaxConfig({
     required this.maxDepth,
     this.iterativeDeepening = false,
-    this.probeChanceNodes = true,
+    this.chanceNodeProbeWindow = ProbeWindow.overlapping,
     this.transpositionTableSize = 1024 * 1024,
     this.strictTranspositions = false,
     @Deprecated('Internal setting for development only.') this.debugSetting,
@@ -22,14 +22,14 @@ class ExpectiminimaxConfig {
   /// Defaults to false, pending further exploration.
   final bool iterativeDeepening;
 
-  /// Whether to use probing on chance node children in order to more quickly
-  /// establish a lower/upper bound before a second full search pass.
+  /// Which type of probing to use on chance node children in order to more
+  /// quickly establish a lower/upper bound before a second full search pass.
   ///
   /// This technique can result in performance increases, but it can also reduce
   /// performance in some cases.
   ///
-  /// Defaults to true.
-  final bool probeChanceNodes;
+  /// Defaults to probing from -2 to beta and alpha to +2 (overlapping probe).
+  final ProbeWindow chanceNodeProbeWindow;
 
   /// How many entries to store in the transposition table.
   ///
@@ -53,7 +53,7 @@ class ExpectiminimaxConfig {
   ExpectiminimaxConfig copyWith({
     int? maxDepth,
     bool? iterativeDeepening,
-    bool? probeChanceNodes,
+    ProbeWindow? chanceNodeProbeWindow,
     int? transpositionTableSize,
     bool? strictTranspositions,
     @Deprecated('Internal use only.') dynamic debugSetting,
@@ -61,11 +61,28 @@ class ExpectiminimaxConfig {
       ExpectiminimaxConfig(
         maxDepth: maxDepth ?? this.maxDepth,
         iterativeDeepening: iterativeDeepening ?? this.iterativeDeepening,
-        probeChanceNodes: probeChanceNodes ?? this.probeChanceNodes,
+        chanceNodeProbeWindow:
+            chanceNodeProbeWindow ?? this.chanceNodeProbeWindow,
         transpositionTableSize:
             transpositionTableSize ?? this.transpositionTableSize,
         strictTranspositions: strictTranspositions ?? this.strictTranspositions,
         // ignore: deprecated_member_use_from_same_package
         debugSetting: debugSetting ?? this.debugSetting,
       );
+}
+
+/// Strategy for probing chance nodes
+enum ProbeWindow {
+  /// Do not probe chance nodes.
+  none,
+
+  /// For range alpha-beta, probe from alpha to +1 and -1 to beta.
+  overlapping,
+
+  /// Find the central point between alpha and beta, then probe from center
+  /// to +1, and -1 to center.
+  centerToEnd,
+
+  /// For range alpha-beta, probe from beta to +1 and -1 to alpha.
+  edgeToEnd,
 }

@@ -275,8 +275,14 @@ abstract class ParseConfigCommand extends Command {
         ..addFlag('iterative-deepening',
             defaultsTo: defaults.iterativeDeepening,
             help: 'enable iterative deepening')
-        ..addFlag('probe-chance-nodes',
-            defaultsTo: defaults.probeChanceNodes,
+        ..addOption('chance-node-probe-window',
+            allowed: [
+              'none',
+              'overlapping',
+              'centerToEnd',
+              'edgeToEnd',
+            ],
+            defaultsTo: defaults.chanceNodeProbeWindow.name,
             help: 'enable probing phase on chance nodes')
         ..addOption('transposition-table-size',
             defaultsTo: defaults.transpositionTableSize.toString(),
@@ -292,7 +298,8 @@ abstract class ParseConfigCommand extends Command {
       ExpectiminimaxConfig(
         maxDepth: int.parse(results['max-depth']),
         iterativeDeepening: results['iterative-deepening'],
-        probeChanceNodes: results['probe-chance-nodes'],
+        chanceNodeProbeWindow:
+            ProbeWindow.values.byName(results['chance-node-probe-window']),
         transpositionTableSize: int.parse(results['transposition-table-size']),
         strictTranspositions: results['strict-transpositions'],
         // ignore: deprecated_member_use_from_same_package

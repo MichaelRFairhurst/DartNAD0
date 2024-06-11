@@ -16,7 +16,7 @@ class Expectiminimax<G extends Game<G>> {
             List<Move<G>?>.filled(config.maxDepth, null, growable: false),
         stats = SearchStats(config.maxDepth),
         maxDepth = config.maxDepth,
-        probeChanceNodes = config.probeChanceNodes,
+        chanceNodeProbeWindow = config.chanceNodeProbeWindow,
         useIterativeDeepening = config.iterativeDeepening,
         // ignore: deprecated_member_use_from_same_package
         _debugSetting = config.debugSetting;
@@ -37,8 +37,9 @@ class Expectiminimax<G extends Game<G>> {
   // Feature permanently turned on, but, disableable for debugging etc.
   static const bool useStarMinimax = true;
 
-  // Experimental feature, can be turned on or off.
-  final bool probeChanceNodes;
+  /// Which type of probing to use on chance node children in order to more
+  /// quickly establish a lower/upper bound before a second full search pass.
+  final ProbeWindow chanceNodeProbeWindow;
 
   // Experimental feature, can be turned on or off.
   final bool useIterativeDeepening;
@@ -72,6 +73,7 @@ class Expectiminimax<G extends Game<G>> {
   }
 
   double checkScoreGame(G game, int depth, double alpha, double beta) {
+    assert(alpha <= beta, 'Got alpha $alpha > beta $beta');
     final score = scoreGame(game, depth, alpha, beta);
     assert(() {
       final checkedScore = scoreGame(game, depth, -2.0, 2.0);
@@ -117,7 +119,8 @@ class Expectiminimax<G extends Game<G>> {
           chance.possibilities.single.outcome, depth - 1, alpha, beta);
     }
 
-    final probeChanceNodes = this.probeChanceNodes && depth > 1;
+    final probeChanceNodes =
+        chanceNodeProbeWindow != ProbeWindow.none && depth > 1;
 
     final scoresLB =
         List.filled(chance.possibilities.length, -1.0, growable: false);
@@ -126,35 +129,137 @@ class Expectiminimax<G extends Game<G>> {
 
     double sumLB = -1.0;
     double sumUB = 1.0;
+
+    // Fudge against floating point error in these two functions.
+    double alphaForChild(int i, double probability) =>
+        (alpha - (sumUB - scoresUB[i] * probability)) / probability - 0.000001;
+
+    double betaForChild(int i, double probability) =>
+        (beta - (sumLB - scoresLB[i] * probability)) / probability + 0.000001;
+
+    // Log and sanitize this cutoff score, plus sanity assertions.
+    double alphaCutoff() {
+      assert(sumUB <= alpha,
+          'sumUB $sumUB > alpha $alpha, but we were told to alpha cutoff');
+      assert(() {
+        final checkScore =
+            chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+        assert(checkScore <= alpha,
+            '$sumUB is <= $alpha, but real score is $checkScore');
+        return true;
+      }());
+
+      stats.cutoffsByPly[depth]++;
+      // Careful, returning a sumUB > alpha due to floating point error will
+      // look like an exact score rather than an UB.
+      return min(sumUB, alpha).clamp(-2.0, 2.0);
+    }
+
+    // Log and sanitize this cutoff score, plus sanity assertions.
+    double betaCutoff() {
+      assert(sumLB >= beta,
+          'sumLB $sumLB < beta $beta, but we were told to beta cutoff');
+      assert(() {
+        final checkScore =
+            chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+        assert(checkScore >= beta,
+            '$sumUB is >= $beta, but real score is $checkScore');
+        return true;
+      }());
+
+      stats.cutoffsByPly[depth]++;
+      // Careful, returning a sumLB < beta due to floating point error will
+      // look like an exact score rather than an LB.
+      return max(sumLB, beta).clamp(-2.0, 2.0);
+    }
+
     if (probeChanceNodes) {
+      probeSearch:
       for (var i = 0; i < chance.possibilities.length; ++i) {
         final p = chance.possibilities[i];
 
-        if (alpha > -1.0) {
-          // Check if this score exceeds alpha, to quickly get an upper bound.
-          // TODO: instead of 2.0, identify the beta value that will cut off.
-          final ubSearch = checkScoreGame(p.outcome, depth - 1, alpha, 2.0);
-          // Fudge against floating point error.
-          scoresUB[i] = ubSearch + 0.001;
-          if (ubSearch >= alpha) {
-            scoresLB[i] = ubSearch - 0.001;
+        final double ubSearchBottom;
+        final double lbSearchTop;
+
+        switch (chanceNodeProbeWindow) {
+          case ProbeWindow.none:
+            assert(false, 'should not get here');
+            break probeSearch;
+          case ProbeWindow.overlapping:
+            lbSearchTop = beta;
+            ubSearchBottom = alpha;
+            break;
+          case ProbeWindow.centerToEnd:
+            ubSearchBottom = lbSearchTop = (alpha + beta) / 2;
+            break;
+          case ProbeWindow.edgeToEnd:
+            lbSearchTop = alpha;
+            ubSearchBottom = beta;
+            break;
+        }
+
+        // Probe for an upper bound (from ubSearchBottom to 2.0 or cutoff).
+        //
+        // TODO: Investigate why alpha > -1.0 condition speeds up backgammon,
+        // but slows down dicebattle.
+        // TODO: Investigate why 1.0 > ubSearchBottom > -1.0 condition speeds
+        // up dicebattle but slows down backgammon.
+        //
+        // For now, use both, which functions well as a compromise.
+        if (ubSearchBottom > -1.0 && ubSearchBottom < 1.0 && alpha > -1.0) {
+          final betaP = min(betaForChild(i, p.probability), 2.0);
+
+          // The upper bound we chose to probe is actually in cutoff range. For
+          // now, we just skip, though, we may be able to do something smarter.
+          if (ubSearchBottom < betaP) {
+            final ubSearch =
+                checkScoreGame(p.outcome, depth - 1, ubSearchBottom, betaP);
+            sumUB += (ubSearch - scoresUB[i]) * p.probability;
+            scoresUB[i] = ubSearch;
+            if (ubSearch >= ubSearchBottom) {
+              sumLB += (ubSearch - scoresLB[i]) * p.probability;
+              scoresLB[i] = ubSearch;
+            }
+            if (ubSearch >= betaP) {
+              return betaCutoff();
+            }
           }
         }
 
-        if (beta < 1.0 && alpha != beta && scoresUB[i] != scoresLB[i]) {
-          // Check if this score exceeds beta, to quickly get an lower bound.
-          // TODO: instead of -2.0, identify the alpha value that will cut off.
-          final lbSearch = checkScoreGame(p.outcome, depth - 1, -2.0, beta);
-          // Fudge against floating point error.
-          scoresLB[i] = max(scoresLB[i], lbSearch);
-          if (lbSearch <= beta) {
-            scoresUB[i] = min(scoresUB[i], lbSearch + 0.001);
+        // Probe for a lower bound (from -2.0 or cutoff to lbSearchTop).
+        //
+        // TODO: Investigate why beta < 1.0 condition speeds up backgammon,
+        // but slows down dicebattle.
+        // TODO: Investigate why 1.0 > lbSearchTop > -1.0 condition speeds
+        // but backgammon but slows down dicebattle.
+        //
+        // For now, use beta < 1.0, as it dicebattle is more of a solver and
+        // backgammon is more likely to be more representative.
+        if (lbSearchTop < 1.0 &&
+            lbSearchTop > -1.0 &&
+            alpha != beta &&
+            scoresUB[i] != scoresLB[i]) {
+          final alphaP = max(alphaForChild(i, p.probability), -2.0);
+
+          // The lower bound we chose to probe is actually in cutoff range. For
+          // now, we just skip, though, we may be able to do something smarter.
+          if (alphaP < lbSearchTop) {
+            final lbSearch =
+                checkScoreGame(p.outcome, depth - 1, alphaP, lbSearchTop);
+            sumLB -= scoresLB[i] * p.probability;
+            scoresLB[i] = max(scoresLB[i], lbSearch);
+            sumLB += scoresLB[i] * p.probability;
+            if (lbSearch <= lbSearchTop) {
+              sumUB -= scoresUB[i] * p.probability;
+              scoresUB[i] = min(scoresUB[i], lbSearch);
+              sumUB += scoresUB[i] * p.probability;
+            }
+            if (lbSearch <= alphaP) {
+              return alphaCutoff();
+            }
           }
         }
 
-        // TODO: Check cutoff conditions before doing the lower bound search too
-        sumLB += scoresLB[i] * p.probability + p.probability;
-        sumUB += scoresUB[i] * p.probability - p.probability;
         if (sumUB <= alpha) {
           stats.cutoffsByPly[depth]++;
           assert(() {
@@ -186,13 +291,13 @@ class Expectiminimax<G extends Game<G>> {
     var sum = 0.0;
     var future = 1.0;
     for (var i = 0; i < chance.possibilities.length; ++i) {
-      if (probeChanceNodes && scoresLB[i] == scoresUB[i]) {
-        sum += scoresLB[i];
-        continue;
-      }
-
       final p = chance.possibilities[i];
       future -= p.probability;
+
+      if (probeChanceNodes && scoresLB[i] == scoresUB[i]) {
+        sum += scoresLB[i] * p.probability;
+        continue;
+      }
 
       const worstAlpha = 1.0;
       const worstBeta = -1.0;
@@ -263,8 +368,10 @@ class Expectiminimax<G extends Game<G>> {
           p.outcome, depth - 1, max(-2.0, alphaP), min(2.0, betaP));
 
       if (probeChanceNodes) {
-        assert(score >= scoresLB[i]);
-        assert(score <= scoresUB[i]);
+        assert(score + 0.000001 >= scoresLB[i],
+            '$score is not >= lb ${scoresLB[i]}');
+        assert(score - 0.000001 <= scoresUB[i],
+            '$score is not <= ub ${scoresUB[i]}');
         sumLB += score * p.probability - scoresLB[i] * p.probability;
         sumUB += score * p.probability - scoresUB[i] * p.probability;
 
