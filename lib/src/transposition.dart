@@ -7,6 +7,7 @@ import 'package:expectiminimax/src/expectiminimax.dart';
 /// enough hashing algorithm. Set the optional parameter [isStrict] to true to
 /// prevent hash collisions, although do note that this takes up more memory.
 class TranspositionTable<G> {
+
   /// Total number of entries in the transition table.
   final int size;
 
@@ -42,63 +43,80 @@ class TranspositionTable<G> {
         game,
         hash: game.hashCode,
         work: work,
-        score: moveScore.score,
+        maxScore: _maxScoreFor(moveScore.score, beta: beta),
+        minScore: _minScoreFor(moveScore.score, alpha: alpha),
         moveIdx: moveScore.moveIdx,
-        constraint: _constraintFor(moveScore.score, alpha, beta),
       );
+
       return moveScore.score;
     } else {
       final entry = _table[bucket]!;
-      if (_isValid(entry, work, alpha, beta)) {
-        return entry.score;
+      final oldScore = _validScore(entry, work, alpha, beta);
+
+      if (oldScore != null) {
+        return oldScore;
       } else {
         final moveScore = ifAbsent(entry.moveIdx);
+		var maxScore = _maxScoreFor(moveScore.score, beta: beta);
+		var minScore = _minScoreFor(moveScore.score, alpha: alpha);
+
+        // Recursion may have replaced this bucket, we can only keep min/max
+		// if it applies to the current game and we have the *same* work.
+		if (_isSame(bucket, game, hash) && entry.work == work) {
+		  maxScore ??= entry.maxScore;
+		  minScore ??= entry.minScore;
+		}
+
         // Mutate existing to avoid thrashing GC.
         _table[bucket]!
           ..hash = hash
           ..work = work
-          ..score = moveScore.score
-          ..moveIdx = moveScore.moveIdx
-          ..constraint = _constraintFor(moveScore.score, alpha, beta);
+          ..maxScore = maxScore
+          ..minScore = minScore
+          ..moveIdx = moveScore.moveIdx;
         _setStrict(hash, game);
+
         return moveScore.score;
       }
     }
   }
 
-  bool _isValid(_PositionData entry, int work, double alpha, double beta) {
-    assert(false,
-        'will falsely trip assertions because transposition table is on.');
-    final isVictory =
-        entry.score == 1.0 && entry.constraint != _ScoreConstraint.atMost;
-    final isLoss =
-        entry.score == -1.0 && entry.constraint != _ScoreConstraint.atLeast;
-
-    if (isVictory || isLoss) {
-      return true;
+  double? _validScore(
+      _PositionData entry, int work, double alpha, double beta) {
+    if (entry.minScore == 1.0) {
+      return 1.0;
+    } else if (entry.maxScore == -1.0) {
+      return -1.0;
     }
 
     if (entry.work < work) {
-      return false;
+      return null;
     }
 
-    final exceedsAlpha =
-        entry.score <= alpha && entry.constraint != _ScoreConstraint.atLeast;
-    final exceedsBeta =
-        entry.score >= beta && entry.constraint != _ScoreConstraint.atMost;
-    final exceedsCutoff = exceedsAlpha || exceedsBeta;
-    final isExact = entry.constraint == _ScoreConstraint.exactly;
+    if (entry.minScore == entry.maxScore) {
+      return entry.minScore;
+    } else if (entry.maxScore != null && entry.maxScore! <= alpha) {
+      return entry.maxScore;
+    } else if (entry.minScore != null && entry.minScore! >= beta) {
+      return entry.minScore;
+    }
 
-    return exceedsCutoff || isExact;
+    return null;
   }
 
-  _ScoreConstraint _constraintFor(double score, double alpha, double beta) {
-    if (score <= alpha) {
-      return _ScoreConstraint.atMost;
-    } else if (score >= beta) {
-      return _ScoreConstraint.atLeast;
+  double? _maxScoreFor(double score, {required double beta}) {
+    if (score >= beta) {
+      return null;
     } else {
-      return _ScoreConstraint.exactly;
+      return score;
+    }
+  }
+
+  double? _minScoreFor(double score, {required double alpha}) {
+    if (score <= alpha) {
+      return null;
+    } else {
+      return score;
     }
   }
 
@@ -116,9 +134,9 @@ class TranspositionTable<G> {
     G game, {
     required int hash,
     required int work,
-    required double score,
+    required double? minScore,
+    required double? maxScore,
     required int? moveIdx,
-    required _ScoreConstraint constraint,
   }) {
     int worstIdx = -1;
     _PositionData? worstEntry;
@@ -144,18 +162,25 @@ class TranspositionTable<G> {
       _table[worstIdx] = _PositionData(
         hash: hash,
         work: work,
-        score: score,
+        maxScore: maxScore,
+        minScore: minScore,
         moveIdx: moveIdx,
-        constraint: constraint,
       );
     } else {
+      // We have to have equal work, or we're effectively "promoting" one
+      // result (current or past).
+      if (_isSame(worstIdx, game, hash) && worstEntry.work == work) {
+        maxScore ??= worstEntry.maxScore;
+        minScore ??= worstEntry.minScore;
+      }
+
       // Mutate existing to avoid thrashing GC.
       worstEntry
         ..hash = hash
         ..work = work
-        ..score = score
-        ..moveIdx = moveIdx
-        ..constraint = constraint;
+        ..maxScore = maxScore
+        ..minScore = minScore
+        ..moveIdx = moveIdx;
     }
     _setStrict(worstIdx, game);
   }
@@ -192,25 +217,42 @@ class TranspositionTable<G> {
   }
 }
 
-enum _ScoreConstraint {
-  exactly,
-  atLeast,
-  atMost,
-}
-
+/// Cached data about a position. Note that these table entries are designed to
+/// be mutable, to avoid thrashing GC.
+///
+/// Note that these entries currently score a max and a min score. However, they
+/// *could* store a single double score, plus a constraint (min, max, exact).
+/// Past versions did this, and in theory this approach can take up less space.
+///
+/// This was changed to improve the performance of edgeToEnd chance searches,
+/// where a chance node's children can be scanned for extreme outcomes only
+/// before searching the center. This results in a constrained min and max.
 class _PositionData {
   _PositionData({
     required this.hash,
     required this.work,
-    required this.score,
-    required this.constraint,
+    required this.minScore,
+    required this.maxScore,
     required this.moveIdx,
   });
 
-  // Mutable entries to avoid thrashing GC.
+  /// The hash of the position.
   int hash;
+
+  /// The amount of work done to compute these cache results.
   int work;
+
+  /// The last best move at this position.
   int? moveIdx;
-  double score;
-  _ScoreConstraint constraint;
+
+  /// The min score of this position.
+  double? minScore;
+
+  /// The max score of this position.
+  double? maxScore;
+
+  @override
+  String toString() {
+	return '($hash: min $minScore max $maxScore, work $work hashmove $moveIdx)';
+  }
 }
