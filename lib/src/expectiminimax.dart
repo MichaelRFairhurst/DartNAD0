@@ -99,7 +99,7 @@ class Expectiminimax<G extends Game<G>> {
   double scoreMove(Move<G> move, G game, int depth, double alpha, double beta) {
     stats.nodesSearchedByPly[depth]++;
     final chance = move.perform(game);
-    if (!useAlphaBeta || (alpha < -1.0 && beta > 1.0)) {
+    if (!useAlphaBeta || (alpha < -1.0 && beta > 1.0) || depth <= 1) {
       stats.fwChanceSearches++;
       return chance
           .expectedValue((g) => checkScoreGame(g, depth - 1, -2.0, 2.0));
