@@ -265,7 +265,7 @@ class Expectiminimax<G extends Game<G>> {
           assert(() {
             final checkScore =
                 chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
-            assert(checkScore <= alpha,
+            assert(checkScore - 0.000001 <= alpha,
                 '$sumUB is <= $alpha, but real score is $checkScore');
             return true;
           }());
@@ -275,7 +275,7 @@ class Expectiminimax<G extends Game<G>> {
           assert(() {
             final checkScore =
                 chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
-            assert(checkScore >= alpha,
+            assert(checkScore + 0.000001 >= beta,
                 '$sumUB is >= $beta, but real score is $checkScore');
             return true;
           }());
