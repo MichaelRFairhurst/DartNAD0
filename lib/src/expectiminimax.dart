@@ -282,6 +282,8 @@ class Expectiminimax<G extends Game<G>> {
           return sumLB.clamp(-2.0, 2.0);
         }
 
+        // This indicates that we cannot possibly produce any cutoffs, and it is
+        // not worth probing any more.
         if (sumLB > alpha && sumUB < beta) {
           break;
         }
