@@ -16,8 +16,10 @@ class DiceBattle extends Game<DiceBattle> {
   DiceBattle({
     required this.p1Score,
     required this.p1DiceScore,
+    required this.p1CanAttack,
     required this.p2Score,
     required this.p2DiceScore,
+    required this.p2CanAttack,
     required this.p1Turn,
     required this.roll,
   });
@@ -25,8 +27,10 @@ class DiceBattle extends Game<DiceBattle> {
   final Roll roll;
   final int p1Score;
   final int p1DiceScore;
+  final bool p1CanAttack;
   final int p2Score;
   final int p2DiceScore;
+  final bool p2CanAttack;
   final bool p1Turn;
 
   @override
@@ -56,10 +60,11 @@ class DiceBattle extends Game<DiceBattle> {
 
     final myScore = p1Turn ? p1Score : p2Score;
     final oppScore = p1Turn ? p2Score : p1Score;
+    final myCanAttack = p1Turn ? p1CanAttack : p2CanAttack;
     final myDice = p1Turn ? p1DiceScore : p2DiceScore;
     final opDice = p1Turn ? p2DiceScore : p1DiceScore;
 
-    final legalToAttack = opDice > 1 && myDice * 6 >= oppScore;
+    final legalToAttack = opDice > 1 && myDice * 6 >= oppScore && myCanAttack;
     final legalToInvest = myScore >= investCost;
 
     if (legalToAttack && legalToInvest) {
@@ -77,29 +82,37 @@ class DiceBattle extends Game<DiceBattle> {
     bool flipTurns = false,
     int curScore = 0,
     int curDiceScore = 0,
+    bool? curCanAttack,
     int oppScore = 0,
     int oppDiceScore = 0,
+    bool? oppCanAttack,
   }) =>
       copyWith(
         p1Turn: flipTurns ? !p1Turn : p1Turn,
         p1Score: p1Score + (p1Turn ? curScore : oppScore),
         p1DiceScore: p1DiceScore + (p1Turn ? curDiceScore : oppDiceScore),
+        p1CanAttack: p1Turn ? curCanAttack : oppCanAttack,
         p2Score: p2Score + (p1Turn ? oppScore : curScore),
         p2DiceScore: p2DiceScore + (p1Turn ? oppDiceScore : curDiceScore),
+        p2CanAttack: p1Turn ? oppCanAttack : curCanAttack,
       );
 
   DiceBattle copyWith({
     int? p1Score,
     int? p1DiceScore,
+    bool? p1CanAttack,
     int? p2Score,
     int? p2DiceScore,
+    bool? p2CanAttack,
     bool? p1Turn,
   }) =>
       DiceBattle(
         p1Score: p1Score ?? this.p1Score,
         p1DiceScore: p1DiceScore ?? this.p1DiceScore,
+        p1CanAttack: p1CanAttack ?? this.p1CanAttack,
         p2Score: p2Score ?? this.p2Score,
         p2DiceScore: p2DiceScore ?? this.p2DiceScore,
+        p2CanAttack: p2CanAttack ?? this.p2CanAttack,
         p1Turn: p1Turn ?? this.p1Turn,
         roll: roll,
       );
@@ -111,6 +124,8 @@ class DiceBattle extends Game<DiceBattle> {
         other.p2Score == p2Score &&
         other.p1DiceScore == p1DiceScore &&
         other.p2DiceScore == p2DiceScore &&
+        other.p1CanAttack == p1CanAttack &&
+        other.p2CanAttack == p2CanAttack &&
         other.p1Turn == p1Turn;
   }
 
@@ -123,6 +138,8 @@ class DiceBattle extends Game<DiceBattle> {
     result = result * 30 + p2Score;
     result = result * 10 + p1DiceScore;
     result = result * 10 + p2DiceScore;
+    result = result * 2 + (p1CanAttack ? 1 : 0);
+    result = result * 2 + (p2CanAttack ? 1 : 0);
     return result;
   }
 
@@ -172,6 +189,7 @@ class Fortify implements Move<DiceBattle> {
     return chance.map((result) => game.adjust(
           flipTurns: true,
           curScore: result,
+          curCanAttack: true,
         ));
   }
 }
@@ -188,6 +206,7 @@ class Invest implements Move<DiceBattle> {
       flipTurns: true,
       curScore: -investCost,
       curDiceScore: 1,
+      curCanAttack: true,
     ));
   }
 }
@@ -219,6 +238,8 @@ class Attack implements Move<DiceBattle> {
           flipTurns: true,
           curScore: attackPointWin +
               (game.p1Turn ? game.p2DiceScore : game.p1DiceScore),
+          curCanAttack: false,
+          oppCanAttack: false,
           oppDiceScore: -1,
         );
       } else {
