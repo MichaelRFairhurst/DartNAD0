@@ -289,6 +289,14 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
     final random = Random(seed);
     final algs = configs.map((c) => Expectiminimax<G>(config: c)).toList();
 
+    print('[GAMES]');
+    print('');
+    print('[RATINGS]');
+    print(elo);
+
+    final esc = String.fromCharCode(27);
+    final clearStr = '$esc[1A$esc[2K' * (configs.length + 2);
+
     for (var i = 0; i < count; ++i) {
       var game = startingGame;
       final aIdx = random.nextInt(configs.length);
@@ -300,15 +308,23 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
       final playerA = algs[aIdx];
       final playerB = algs[bIdx];
 
+      if (configs[aIdx].debugSetting == 'clear' ||
+          configs[aIdx].debugSetting == 'cleartab') {
+        algs[aIdx].transpositionTable.clear();
+      }
+
+      if (configs[bIdx].debugSetting == 'clear' ||
+          configs[bIdx].debugSetting == 'cleartab') {
+        algs[bIdx].transpositionTable.clear();
+      }
+
       while (true) {
         if (game.score == 1.0) {
-          print('');
-          print('game $i, $aIdx beats $bIdx');
+          print('${clearStr}* game $i, $aIdx beats $bIdx');
           elo.victory(aIdx, bIdx);
           break;
         } else if (game.score == -1.0) {
-          print('');
-          print('game $i, $bIdx beats $aIdx');
+          print('${clearStr}* game $i, $bIdx beats $aIdx');
           elo.loss(aIdx, bIdx);
           break;
         }
@@ -326,7 +342,7 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
       }
 
       print('');
-      print('[NEW RATINGS]');
+      print('[RATINGS]');
       print(elo);
 
       if (argResults!['sprt']) {
