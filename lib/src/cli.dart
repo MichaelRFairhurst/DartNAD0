@@ -3,8 +3,10 @@ import 'dart:math';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:expectiminimax/src/config.dart';
+import 'package:expectiminimax/src/elo.dart';
 import 'package:expectiminimax/src/expectiminimax.dart';
 import 'package:expectiminimax/src/game.dart';
+import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/perft.dart';
 import 'package:expectiminimax/src/stats.dart';
 
@@ -42,7 +44,8 @@ class CliTools<G extends Game<G>> {
       ..addCommand(WatchGame(startingGame, defaultConfig, []))
       // TODO: Distinguish SingleConfigCommand from MultiConfigCommand
       ..addCommand(Benchmark(startingGame, defaultConfig, []))
-      ..addCommand(Compare(startingGame, defaultConfig, configs));
+      ..addCommand(Compare(startingGame, defaultConfig, configs))
+      ..addCommand(Rank(startingGame, defaultConfig, configs));
 
     commandRunner.run(sections[0]);
   }
@@ -236,6 +239,112 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
       print('');
       print('Comparative stats (alternative #$c - baseline):');
       print(stats[c] - stats[0]);
+    }
+  }
+}
+
+class Rank<G extends Game<G>> extends ParseConfigCommand {
+  final name = 'rank';
+  final description = 'Rank two configs in ELO, by playing a series of games'
+      ' between them.';
+
+  final G startingGame;
+
+  Rank(this.startingGame, ExpectiminimaxConfig defaultConfig,
+      List<List<String>> configSpecs)
+      : super(defaultConfig, configSpecs) {
+    argParser.addOption('count',
+        abbr: 'c', defaultsTo: '10', help: 'Maximum number of games to play');
+    argParser.addOption('seed',
+        abbr: 's', help: 'Random number generator seed.');
+    argParser.addFlag('sprt',
+        defaultsTo: false,
+        help: 'Run SPRT (sequential probability ratio test), which tests until'
+            ' --elo or --null-elo is proven for each engine, or max games is'
+            ' hit.');
+    argParser.addOption('alpha',
+        defaultsTo: '0.05',
+        help: 'alpha value for running SPRT, or, false positive rate');
+    argParser.addOption('beta',
+        defaultsTo: '0.05',
+        help: 'beta value for running SPRT, or, false negative rate');
+    argParser.addOption('elo',
+        defaultsTo: '20',
+        help: 'When running SPRT, this sets the alternative hypothesis ELO for'
+            ' each engine.');
+    argParser.addOption('null-elo',
+        defaultsTo: '0',
+        help: 'When running SPRT, this sets the null hypothesis ELO for each'
+            ' engine.');
+  }
+
+  @override
+  void runWithConfigs(List<ExpectiminimaxConfig> configs) {
+    final elo = FullHistoryElo<int>();
+    elo.init(List.generate(configs.length, (i) => i));
+    final seed =
+        argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
+    final count = int.parse(argResults!['count']);
+
+    final random = Random(seed);
+    final algs = configs.map((c) => Expectiminimax<G>(config: c)).toList();
+
+    for (var i = 0; i < count; ++i) {
+      var game = startingGame;
+      final aIdx = random.nextInt(configs.length);
+      var bIdx = random.nextInt(configs.length - 1);
+      if (bIdx >= aIdx) {
+        ++bIdx;
+      }
+
+      final playerA = algs[aIdx];
+      final playerB = algs[bIdx];
+
+      while (true) {
+        if (game.score == 1.0) {
+          print('');
+          print('game $i, $aIdx beats $bIdx');
+          elo.victory(aIdx, bIdx);
+          break;
+        } else if (game.score == -1.0) {
+          print('');
+          print('game $i, $bIdx beats $aIdx');
+          elo.loss(aIdx, bIdx);
+          break;
+        }
+
+        final moves = game.getMoves();
+        final Move<G> move;
+        if (game.isMaxing) {
+          move = playerA.chooseBest(moves, game);
+        } else {
+          move = playerB.chooseBest(moves, game);
+        }
+        final chance = move.perform(game);
+        final outcome = chance.pick(random.nextDouble());
+        game = outcome.outcome;
+      }
+
+      print('');
+      print('[NEW RATINGS]');
+      print(elo);
+
+      if (argResults!['sprt']) {
+        final alpha = double.parse(argResults!['alpha']);
+        final beta = double.parse(argResults!['beta']);
+        final elo1 = double.parse(argResults!['null-elo']);
+        final elo2 = double.parse(argResults!['elo']);
+        final sprt = elo.sprt(alpha: alpha, beta: beta, elo1: elo1, elo2: elo2);
+        if (sprt.length == configs.length) {
+          print('');
+          print('Stopping on SPRT result!');
+          print(sprt.entries
+              .map((e) => '${e.key}:'
+                  ' ${e.value ? "more likely $elo2" : "more likely $elo1"}')
+              .join('\n'));
+          return;
+        }
+      }
     }
   }
 }
