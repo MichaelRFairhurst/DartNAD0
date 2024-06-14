@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:thread/thread.dart';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/elo.dart';
 import 'package:expectiminimax/src/expectiminimax.dart';
@@ -276,6 +277,62 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
         defaultsTo: '0',
         help: 'When running SPRT, this sets the null hypothesis ELO for each'
             ' engine.');
+    argParser.addFlag('refresh',
+        abbr: 'r',
+        help: 'Whether or not to clear cache results between games',
+        defaultsTo: false);
+  }
+
+  Thread startThread(List<Expectiminimax<G>> algs,
+      List<ExpectiminimaxConfig> configs, Random random, bool refresh) {
+    return Thread((events) {
+      events.on('game', (List<int> players) {
+        var game = startingGame;
+        final aIdx = players[0];
+        var bIdx = players[1];
+
+        final playerA = algs[aIdx];
+        final playerB = algs[bIdx];
+
+        if (refresh) {
+          algs[bIdx].transpositionTable.clear();
+          algs[aIdx].transpositionTable.clear();
+        }
+
+        for (int i = 0; true; ++i) {
+          if (game.score == 1.0 || game.score == -1.0) {
+            events.emit('result', game.score);
+            break;
+          } else if (i == 1000) {
+            events.emit('result', 0.0);
+            break;
+          }
+
+          final moves = game.getMoves();
+          if (moves.isEmpty) {
+            events.emit('result', 0.0);
+            break;
+          }
+
+          final Move<G> move;
+          if (game.isMaxing) {
+            move = playerA.chooseBest(moves, game);
+          } else {
+            move = playerB.chooseBest(moves, game);
+          }
+          final chance = move.perform(game);
+          final outcome = chance.pick(random.nextDouble());
+          game = outcome.outcome;
+        }
+      });
+    });
+  }
+
+  void stopThreads(List<Thread> threads) {
+    for (final thread in threads) {
+      thread.events?.receivePort.close();
+      thread.stop();
+    }
   }
 
   @override
@@ -288,6 +345,7 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
 
     final random = Random(seed);
     final algs = configs.map((c) => Expectiminimax<G>(config: c)).toList();
+    final refresh = argResults!['refresh'];
 
     print('[GAMES]');
     print('');
@@ -297,70 +355,69 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
     final esc = String.fromCharCode(27);
     final clearStr = '$esc[1A$esc[2K' * (configs.length + 2);
 
-    for (var i = 0; i < count; ++i) {
-      var game = startingGame;
-      final aIdx = random.nextInt(configs.length);
-      var bIdx = random.nextInt(configs.length - 1);
-      if (bIdx >= aIdx) {
-        ++bIdx;
+    final threads =
+        List.generate(8, (i) => startThread(algs, configs, random, refresh));
+
+    var startedGames = 0;
+    var game = 0;
+    for (final thread in threads) {
+      var aIdx;
+      var bIdx;
+      runGame() {
+        aIdx = random.nextInt(configs.length);
+        bIdx = random.nextInt(configs.length - 1);
+        if (bIdx >= aIdx) {
+          ++bIdx;
+        }
+        startedGames++;
+        thread.emit('game', <int>[aIdx, bIdx]);
       }
 
-      final playerA = algs[aIdx];
-      final playerB = algs[bIdx];
-
-      if (configs[aIdx].debugSetting == 'clear' ||
-          configs[aIdx].debugSetting == 'cleartab') {
-        algs[aIdx].transpositionTable.clear();
-      }
-
-      if (configs[bIdx].debugSetting == 'clear' ||
-          configs[bIdx].debugSetting == 'cleartab') {
-        algs[bIdx].transpositionTable.clear();
-      }
-
-      while (true) {
-        if (game.score == 1.0) {
-          print('${clearStr}* game $i, $aIdx beats $bIdx');
+      thread.on('result', (double score) {
+        game++;
+        if (score == 1.0) {
+          print('${clearStr}* game $game, $aIdx beats $bIdx');
           elo.victory(aIdx, bIdx);
-          break;
-        } else if (game.score == -1.0) {
-          print('${clearStr}* game $i, $bIdx beats $aIdx');
+        } else if (score == 0.0) {
+          print('${clearStr}* game $game, $aIdx and $bIdx draw');
+          elo.draw(aIdx, bIdx);
+        } else if (score == -1.0) {
+          print('${clearStr}* game $game, $bIdx beats $aIdx');
           elo.loss(aIdx, bIdx);
-          break;
         }
 
-        final moves = game.getMoves();
-        final Move<G> move;
-        if (game.isMaxing) {
-          move = playerA.chooseBest(moves, game);
+        print('');
+        print('[RATINGS]');
+        print(elo);
+
+        if (argResults!['sprt']) {
+          final alpha = double.parse(argResults!['alpha']);
+          final beta = double.parse(argResults!['beta']);
+          final elo1 = double.parse(argResults!['null-elo']);
+          final elo2 = double.parse(argResults!['elo']);
+          final sprt =
+              elo.sprt(alpha: alpha, beta: beta, elo1: elo1, elo2: elo2);
+          if (sprt.length == configs.length) {
+            stopThreads(threads);
+
+            print('');
+            print('Stopping on SPRT result!');
+            print(sprt.entries
+                .map((e) => '${e.key}:'
+                    ' ${e.value ? "more likely $elo2" : "more likely $elo1"}')
+                .join('\n'));
+          }
+        }
+
+        if (startedGames < count) {
+          runGame();
         } else {
-          move = playerB.chooseBest(moves, game);
+          thread.events?.receivePort.close();
+          thread.stop();
         }
-        final chance = move.perform(game);
-        final outcome = chance.pick(random.nextDouble());
-        game = outcome.outcome;
-      }
+      });
 
-      print('');
-      print('[RATINGS]');
-      print(elo);
-
-      if (argResults!['sprt']) {
-        final alpha = double.parse(argResults!['alpha']);
-        final beta = double.parse(argResults!['beta']);
-        final elo1 = double.parse(argResults!['null-elo']);
-        final elo2 = double.parse(argResults!['elo']);
-        final sprt = elo.sprt(alpha: alpha, beta: beta, elo1: elo1, elo2: elo2);
-        if (sprt.length == configs.length) {
-          print('');
-          print('Stopping on SPRT result!');
-          print(sprt.entries
-              .map((e) => '${e.key}:'
-                  ' ${e.value ? "more likely $elo2" : "more likely $elo1"}')
-              .join('\n'));
-          return;
-        }
-      }
+      runGame();
     }
   }
 }
