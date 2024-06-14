@@ -12,30 +12,32 @@ fun!
 ## Current features
 
 - transposition tables
+- iterative deepening with timeouts
 - minimax-style alpha-beta pruning (for deterministic nodes)
 - move ordering (based on best move stored in transition tables)
 - killer move heuristic
 - \*-minimax (alpha beta pruning on CHANCE nodes)
 - star2-style probing pass on CHANCE descendents
+- SPRT testing support
 
 ## TODO
 
-- Iterative deepening: implemented but not meeting requirements to perform well
-  currentl.
-- Concurrency: will be hard to do anything like lazy SMP in Dart. We could
+- Concurrent search: will be hard to do anything like lazy SMP in Dart. We could
   easily thread on CHANCE nodes, however, this strategy could backfire if we
   can't share the transposition table.
-- Quiescence search (necessary for certain games to avoid horizon problems,
-  find good move orderings in iterative deepening).
+- Quiescence search (necessary for certain games to avoid horizon problems, find
+  good move orderings in iterative deepening).
 - Reversible games: Reduce allocation & GC overhead by using mutable game
   objects and making/unmaking moves
-- Developer features: Stuff like building in ways to play AIs against each
-  other, perft(), and benchmarking improvements.
+- Zobrist hashing
 - MCTS. It aint expectiminimax, but it is a better choice for some games.
 - Late move reductions
 - Support roll-to-move style games more naturally
-- Configurable search options
-- Principle-Variation search
+- Principle-Variation search (prototyped but not offering improvement).
+- TLA+ model checking of optimizations.
+- Draw detection.
+- Prefer winning in fewer turns.
+- Test algorithm on more games.
 
 ## Usage
 
@@ -369,6 +371,8 @@ benchmarking your game!
 void main(List<String> args) {
   final cli = CliTool(
     startingGame: DiceGame(p1Score: 0, p2Score: 0),
+	maxDepth: 20,
+	maxTime: const Duration(seconds: 1),
   );
 
   return cli.run(args);
@@ -378,9 +382,9 @@ void main(List<String> args) {
 Basic usage:
 
 ```bash
-# Watch a game of AI vs AI, with searches up to 8 plies in depth
+# Watch a game of AI vs AI, with searches up to 50ms in duration.
 # Note: pleasant viewership requires your game implement `toString()` :)
-dart bin/my_game.dart watch --max-depth=8
+dart bin/my_game.dart watch --max-time=50
 
 # Run 100 games, searching each move up to 8 plies in depth, and print
 # performance stats.
@@ -393,9 +397,42 @@ dart bin/my_game.dart perft --depth=6
 # Print out more help:
 dart bin/my_game.dart --help
 dart bin/my_game.dart watch --help
+dart bin/my_game.dart rank --help
+dart bin/my_game.dart compare --help
 dart bin/my_game.dart bench --help
 dart bin/my_game.dart perft --help
 ```
+
+### Search config
+
+You can configure the engine settings for your game in many of the subcommands
+by using the following settings:
+
+- `--max-depth' or `-d`: set maximum search depth. Prefer high and rely on
+  timeouts to stop the search, unless you have disabled iterative deepening.
+- `--max-time' or `-t`: set maximum search time in ms. If you have disabled
+  iterative deepening, prefer a very large number/no timeout.
+- `--no-iterative-deepening`: Disable "iterative deepening" in favor of a fixed
+  depth search. With iterative deepening enabled, the engine searches to depth
+  1, then 2, etc, until either timeout or max depth is reached, the best move
+  from the deepest search is picked. Note that fixed depth search is often
+  slower than an equivalently deep iterative deepening search due to caching,
+  and that if the search times out during a fixed depth search, the engine will
+  be forced to pick the first available move.
+- `--chance-node-probe-window`: Use probing approaches to attempt to reduce
+  unconstrained chance node searches, and increase alpha-beta cutoffs. Options
+  are 'none', 'overlapping', 'centerToEnd', and 'edgeToEnd'. For each child of a
+  chance node, we can perform an upper bound and lower bound probe based on the
+  current alpha/beta values. Overlapping searches from alpha to 2.0 and -2.0 to
+  beta, while edgeToEnd searches from beta to 2.0 and -2 to alpha. Center to end
+  is an average of the two, and none disables probing.
+- `--transposition-table-size`: How many entries to hold in the transposition
+  table. Too large will not use the processor cache as effectively, two small
+  means transpositions will be overwritten that would have been useful.
+- `--strict-transpositions`: The transposition table by default assumes that two
+  equal hash codes represent the same game. This is not truly correct behavior,
+  and it is fixable with `--strict-transpositions`. However, it consumes much
+  more memory when enabled.
 
 ## Performance considerations
 
@@ -443,3 +480,77 @@ Run it via command line tools:
 ```bash
 dart bin/your_game.dart perft --depth 8
 ```
+
+### Benchmarking & compare commands
+
+To measure the performance of your engine, and/or compare performance with
+different settings, you can use the `bench` or `compare` commands.
+
+```bash
+# Run 100 games with the given config and print timing/stats
+dart bin/my_game.dart bench --count 100
+
+# Run 100 games with the given configs and compare timing/stats
+dart bin/my_game.dart compare --count 100 $CONFIG1 --vs $CONFIG2
+```
+
+The first command will run 100 games and count how many nodes are visited,
+cutoffs performed, how much time elapsed, etc.
+
+The second command will run 100 games with two different engine configs, check
+for differences in their stats, timing, and move selection. To ensure an apples
+to apples comparison of search statistics, the first engine will pick each move
+and the second engine's move is not played.
+
+You can compare as many engines as you wish at once, for instance:
+
+```bash
+dart bin/my_game.dart compare --count 100 \
+  --max-depth 8 --no-iterative-deepening \ # config 1
+  --vs --max-depth 8 --iterative-deepening \ # config 2
+  --vs --max-depth 40 --iterative-deepening \ # conifg 3
+  --vs ... # config 4+
+```
+
+Run `bench help` and `compare help` for more flags and options.
+
+### SPRT testing
+
+To dial in your engine settings, consider running SPRT tests using the `rank`
+command, to test your engines in directly in elo.
+
+```bash
+# basic ranking functionality
+dart bin/my_game.dart rank --count 100 $CONFIG1 --vs $CONFIG2
+
+# SPRT ranking functionality
+dart bin/my_game.dart rank --sprt --count 10000 $CONFIG1 --vs $CONFIG2
+```
+
+The basic version above will pit engine one against engine two for 100 games,
+and display their ELO scores as calculated by win/loss/draw record, with an
+error margin. But how many games should you run?
+
+The second command starts a Sequential Probability Ratio Test (SPRT), which
+will run games between the provided engine until it has proven one elo
+hypothesis (e.g. +15) over another (e.g. to +0) or vice versa, for each
+specified engine. These elos can be customized with flags `--elo` and
+`--null-elo`, and false positive/false negative rate can be customized with
+flags `--alpha` and `--beta`.
+
+Like `compare`, the `rank` command can take more than two engine configs,
+separated by `--vs` flags. They will all compete against each other, and SPRT
+will finish when each engine has concluded its testing to the requested error.
+
+```bash
+dart bin/my_game.dart rank --sprt --count 10000 \
+  --max-depth 8 --no-iterative-deepening \ # config 1
+  --vs --max-depth 8 --iterative-deepening \ # config 2
+  --vs --max-depth 40 --iterative-deepening \ # conifg 3
+  --vs ... # config 4+
+```
+
+You can use SPRT testing to measure performance changes in elo, and to pick
+the best default settings for your engine's performance.
+
+Run `rank help` for more flags and options.
