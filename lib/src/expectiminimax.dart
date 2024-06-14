@@ -97,18 +97,20 @@ class Expectiminimax<G extends Game<G>> {
     final score = scoreGame(game, depth, alpha, beta);
     assert(() {
       final checkedScore = scoreGame(game, depth, -2.0, 2.0);
-      if (score < alpha && score > beta) {
-        assert(checkedScore == score,
-            'Got the wrong score in non-cutoff range: $score vs $checkedScore');
-      } else if (score > alpha) {
-        assert(checkedScore + 0.0001 > alpha,
+      if (score > alpha && score < beta) {
+        assert(checkedScore + 0.00001 > score,
+            'Got the wrong score in non-cutoff range: $score vs $checkedScore ($alpha, $beta)');
+        assert(checkedScore - 0.00001 < score,
+            'Got the wrong score in non-cutoff range: $score vs $checkedScore ($alpha, $beta)');
+      } else if (score < alpha) {
+        assert(checkedScore - 0.0001 < alpha,
             'Incorrect alpha cutoff: $score vs $checkedScore, alpha $alpha');
-        assert(checkedScore + 0.0001 >= score,
-            'alpha cutoff with wrong score: $score vs $checkedScore, alpha $alpha');
-      } else if (score < beta) {
-        assert(checkedScore - 0.0001 < beta,
-            'Incorrect beta cutoff: $score vs $checkedScore, beta $beta');
         assert(checkedScore - 0.0001 <= score,
+            'alpha cutoff with wrong score: $score vs $checkedScore, alpha $alpha');
+      } else if (score > beta) {
+        assert(checkedScore + 0.0001 > beta,
+            'Incorrect beta cutoff: $score vs $checkedScore, beta $beta');
+        assert(checkedScore + 0.0001 >= score,
             'beta cutoff with wrong score: $score vs $checkedScore, beta $beta');
       }
       return true;

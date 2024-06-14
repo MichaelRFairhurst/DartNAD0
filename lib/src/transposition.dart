@@ -93,6 +93,10 @@ class TranspositionTable<G> {
       return null;
     }
 
+    if (entry.work != work) {
+      assert(false, 'This breaks correctness and will fail other assertions.');
+    }
+
     if (entry.minScore == entry.maxScore) {
       return entry.minScore;
     } else if (entry.maxScore != null && entry.maxScore! <= alpha) {
