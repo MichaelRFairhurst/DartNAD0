@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/game.dart';
@@ -18,6 +19,7 @@ class Expectiminimax<G extends Game<G>> {
         maxDepth = config.maxDepth,
         chanceNodeProbeWindow = config.chanceNodeProbeWindow,
         useIterativeDeepening = config.iterativeDeepening,
+        maxSearchDuration = config.maxTime,
         // ignore: deprecated_member_use_from_same_package
         _debugSetting = config.debugSetting;
 
@@ -44,28 +46,46 @@ class Expectiminimax<G extends Game<G>> {
   // Experimental feature, can be turned on or off.
   final bool useIterativeDeepening;
 
+  /// Max time to perform a search, mostly for iterative deepening in order to
+  /// search to the maximum depth allowed by circumstance.
+  final Duration maxSearchDuration;
+
+  /// A time to abort the search, set when search begins, and checked on every
+  /// iteration of the search.
+  DateTime timeout = DateTime.now();
+
   Move<G> chooseBest(List<Move<G>> moves, G game) {
     final start = DateTime.now();
+    timeout = start.add(maxSearchDuration);
     final alpha = -2.0;
     final beta = 2.0;
+    Move<G> bestMove = moves[0];
 
-    if (useIterativeDeepening) {
-      for (var i = 1; i < maxDepth; ++i) {
-        for (final move in moves) {
-          scoreMove(move, game, i, alpha, beta);
+    try {
+      if (useIterativeDeepening) {
+        for (var i = 1; i < maxDepth; i += 1) {
+          if (game.isMaxing) {
+            bestMove = bestBy<Move<G>, num>(
+                moves, (m) => scoreMove(m, game, i, alpha, beta))!;
+          } else {
+            bestMove = bestBy<Move<G>, num>(
+                moves, (m) => -scoreMove(m, game, i, alpha, beta))!;
+          }
+        }
+      } else {
+        try {
+          if (game.isMaxing) {
+            bestMove = bestBy<Move<G>, num>(
+                moves, (m) => scoreMove(m, game, maxDepth, alpha, beta))!;
+          } else {
+            bestMove = bestBy<Move<G>, num>(
+                moves, (m) => -scoreMove(m, game, maxDepth, alpha, beta))!;
+          }
+        } on TimeoutException {
+          print('WARNING: timed out without iterative deepening');
         }
       }
-    }
-
-    // Final scoring.
-    Move<G> bestMove;
-    if (game.isMaxing) {
-      bestMove = bestBy<Move<G>, num>(
-          moves, (m) => scoreMove(m, game, maxDepth, alpha, beta))!;
-    } else {
-      bestMove = bestBy<Move<G>, num>(
-          moves, (m) => -scoreMove(m, game, maxDepth, alpha, beta))!;
-    }
+    } on TimeoutException catch (_) {}
 
     stats.duration += DateTime.now().difference(start);
 
@@ -444,6 +464,10 @@ class Expectiminimax<G extends Game<G>> {
   }
 
   double scoreGame(G game, int depth, double alpha, double beta) {
+    if (!DateTime.now().isBefore(timeout)) {
+      throw TimeoutException('Search timed out, backing out');
+    }
+
     stats.ttLookups++;
     return transpositionTable.scoreTransposition(game, depth, alpha, beta,
         (int? lastBestMoveIdx) {

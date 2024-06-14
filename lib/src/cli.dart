@@ -68,7 +68,7 @@ class WatchGame<G extends Game<G>> extends ParseConfigCommand {
         allowed: const ['time', 'all', 'none'],
         defaultsTo: 'time');
     argParser.addFlag('print-timing',
-        abbr: 't', help: 'Print timing when the game is finished.');
+        help: 'Print timing when the game is finished.');
   }
 
   @override
@@ -381,6 +381,10 @@ abstract class ParseConfigCommand extends Command {
             abbr: 'd',
             defaultsTo: defaults.maxDepth.toString(),
             help: 'max depth to search')
+        ..addOption('max-time',
+            abbr: 't',
+            defaultsTo: defaults.maxDepth.toString(),
+            help: 'max time to search')
         ..addFlag('iterative-deepening',
             defaultsTo: defaults.iterativeDeepening,
             help: 'enable iterative deepening')
@@ -406,6 +410,7 @@ abstract class ParseConfigCommand extends Command {
   ExpectiminimaxConfig getConfigFromResults(ArgResults results) =>
       ExpectiminimaxConfig(
         maxDepth: int.parse(results['max-depth']),
+        maxTime: Duration(milliseconds: int.parse(results['max-time'])),
         iterativeDeepening: results['iterative-deepening'],
         chanceNodeProbeWindow:
             ProbeWindow.values.byName(results['chance-node-probe-window']),

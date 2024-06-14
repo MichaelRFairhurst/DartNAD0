@@ -565,7 +565,8 @@ class AbandonTurn implements Move<Backgammon> {
 void main(List<String> args) {
   CliTools<Backgammon>(
     defaultConfig: ExpectiminimaxConfig(
-      maxDepth: 10,
+      maxDepth: 40,
+      maxTime: Duration(milliseconds: 1),
     ),
     startingGame: Backgammon(
       points: startingBoard,

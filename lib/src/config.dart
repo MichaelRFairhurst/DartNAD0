@@ -2,7 +2,8 @@
 class ExpectiminimaxConfig {
   const ExpectiminimaxConfig({
     required this.maxDepth,
-    this.iterativeDeepening = false,
+    required this.maxTime,
+    this.iterativeDeepening = true,
     this.chanceNodeProbeWindow = ProbeWindow.overlapping,
     this.transpositionTableSize = 1024 * 1024,
     this.strictTranspositions = false,
@@ -11,6 +12,9 @@ class ExpectiminimaxConfig {
 
   /// The max depth of plies to search.
   final int maxDepth;
+
+  /// The maximum time to spend on any given search.
+  final Duration maxTime;
 
   /// Whether to use iterative deepening (start searching at ply 1, and then
   /// increment depth by 1 and repeat, until we've reached max depth).
@@ -52,6 +56,7 @@ class ExpectiminimaxConfig {
   /// Copy a config with changes to some of its settings.
   ExpectiminimaxConfig copyWith({
     int? maxDepth,
+    Duration? maxTime,
     bool? iterativeDeepening,
     ProbeWindow? chanceNodeProbeWindow,
     int? transpositionTableSize,
@@ -60,6 +65,7 @@ class ExpectiminimaxConfig {
   }) =>
       ExpectiminimaxConfig(
         maxDepth: maxDepth ?? this.maxDepth,
+        maxTime: maxTime ?? this.maxTime,
         iterativeDeepening: iterativeDeepening ?? this.iterativeDeepening,
         chanceNodeProbeWindow:
             chanceNodeProbeWindow ?? this.chanceNodeProbeWindow,

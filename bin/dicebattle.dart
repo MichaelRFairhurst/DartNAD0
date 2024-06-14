@@ -233,7 +233,8 @@ class Attack implements Move<DiceBattle> {
 void main(List<String> args) {
   CliTools<DiceBattle>(
     defaultConfig: ExpectiminimaxConfig(
-      maxDepth: 20,
+      maxDepth: 50,
+      maxTime: Duration(microseconds: 20),
     ),
     startingGame: DiceBattle(
       p1Turn: true,
