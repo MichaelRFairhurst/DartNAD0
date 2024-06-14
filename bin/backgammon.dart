@@ -260,8 +260,12 @@ class Backgammon extends Game<Backgammon> {
   @override
   bool get isMaxing => player1;
 
+  /// Score this game based on how far each checker has moved, minus penalties.
+  ///
   /// Give each player 1 point for each checker for each space it has traveled
   /// towards home. Checkers on the bar count as 0 and bear-offs as 24.
+  ///
+  /// Penalize players 0.5 for leaving a space open.
   @override
   double get score {
     // Co
@@ -279,6 +283,12 @@ class Backgammon extends Game<Backgammon> {
       } else if (points[i] < 0) {
         p2Checkers += -points[i];
         p2Score -= -points[i] * i;
+      }
+
+      if (points[i] == 1) {
+        p1Score -= 0.5;
+      } else if (points[i] == -1) {
+        p2Score -= 0.5;
       }
     }
 
