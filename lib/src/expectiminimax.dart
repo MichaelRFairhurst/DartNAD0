@@ -54,33 +54,28 @@ class Expectiminimax<G extends Game<G>> {
   /// iteration of the search.
   DateTime timeout = DateTime.now();
 
+  /// Used by negamax algorithm to know when minning/maxing player turns flip,
+  /// so we can compute `-score(child, -beta, -alpha)`.
+  var _isMaxing = true;
+
   Move<G> chooseBest(List<Move<G>> moves, G game) {
     final start = DateTime.now();
     timeout = start.add(maxSearchDuration);
     final alpha = -2.0;
     final beta = 2.0;
+    _isMaxing = game.isMaxing;
     Move<G> bestMove = moves[0];
 
     try {
       if (useIterativeDeepening) {
         for (var i = 1; i < maxDepth; i += 1) {
-          if (game.isMaxing) {
-            bestMove = bestBy<Move<G>, num>(
-                moves, (m) => scoreMove(m, game, i, alpha, beta))!;
-          } else {
-            bestMove = bestBy<Move<G>, num>(
-                moves, (m) => -scoreMove(m, game, i, alpha, beta))!;
-          }
+          bestMove = bestBy<Move<G>, num>(
+              moves, (m) => scoreMove(m, game, i, alpha, beta))!;
         }
       } else {
         try {
-          if (game.isMaxing) {
-            bestMove = bestBy<Move<G>, num>(
-                moves, (m) => scoreMove(m, game, maxDepth, alpha, beta))!;
-          } else {
-            bestMove = bestBy<Move<G>, num>(
-                moves, (m) => -scoreMove(m, game, maxDepth, alpha, beta))!;
-          }
+          bestMove = bestBy<Move<G>, num>(
+              moves, (m) => scoreMove(m, game, maxDepth, alpha, beta))!;
         } on TimeoutException {
           print('WARNING: timed out without iterative deepening');
         }
@@ -94,9 +89,9 @@ class Expectiminimax<G extends Game<G>> {
 
   double checkScoreGame(G game, int depth, double alpha, double beta) {
     assert(alpha <= beta, 'Got alpha $alpha > beta $beta');
-    final score = scoreGame(game, depth, alpha, beta);
+    final score = negaScoreGame(game, depth, alpha, beta);
     assert(() {
-      final checkedScore = scoreGame(game, depth, -2.0, 2.0);
+      final checkedScore = negaScoreGame(game, depth, -2.0, 2.0);
       if (score > alpha && score < beta) {
         assert(checkedScore + 0.00001 > score,
             'Got the wrong score in non-cutoff range: $score vs $checkedScore ($alpha, $beta)');
@@ -165,7 +160,7 @@ class Expectiminimax<G extends Game<G>> {
           'sumUB $sumUB > alpha $alpha, but we were told to alpha cutoff');
       assert(() {
         final checkScore =
-            chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            chance.expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
         assert(checkScore <= alpha,
             '$sumUB is <= $alpha, but real score is $checkScore');
         return true;
@@ -183,7 +178,7 @@ class Expectiminimax<G extends Game<G>> {
           'sumLB $sumLB < beta $beta, but we were told to beta cutoff');
       assert(() {
         final checkScore =
-            chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            chance.expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
         assert(checkScore >= beta,
             '$sumUB is >= $beta, but real score is $checkScore');
         return true;
@@ -285,8 +280,8 @@ class Expectiminimax<G extends Game<G>> {
         if (sumUB <= alpha) {
           stats.cutoffsByPly[depth]++;
           assert(() {
-            final checkScore =
-                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore = chance
+                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
             assert(checkScore - 0.000001 <= alpha,
                 '$sumUB is <= $alpha, but real score is $checkScore');
             return true;
@@ -295,8 +290,8 @@ class Expectiminimax<G extends Game<G>> {
         } else if (sumLB >= beta) {
           stats.cutoffsByPly[depth]++;
           assert(() {
-            final checkScore =
-                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore = chance
+                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
             assert(checkScore + 0.000001 >= beta,
                 '$sumUB is >= $beta, but real score is $checkScore');
             return true;
@@ -403,8 +398,8 @@ class Expectiminimax<G extends Game<G>> {
           assert(sumUB <= alpha,
               'sumUB $sumUB <= alpha $alpha, but $score is not <= $alphaP');
           assert(() {
-            final checkScore =
-                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore = chance
+                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
             assert(checkScore <= alpha,
                 '$sumUB is <= $alpha, but real score is $checkScore');
             return true;
@@ -418,8 +413,8 @@ class Expectiminimax<G extends Game<G>> {
           assert(sumLB >= beta,
               'sumLB $sumLB >= beta $beta, but $score is not >= $betaP');
           assert(() {
-            final checkScore =
-                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore = chance
+                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
             assert(checkScore >= alpha,
                 '$sumUB is >= $beta, but real score is $checkScore');
             return true;
@@ -440,8 +435,8 @@ class Expectiminimax<G extends Game<G>> {
       if (!probeChanceNodes) {
         if (score <= alphaP) {
           assert(() {
-            final checkScore =
-                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore = chance
+                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
             assert(checkScore <= alpha, '$checkScore is not <= $alpha');
             assert(maxScore <= alpha, '$maxScore is not <= $alpha');
             return true;
@@ -450,8 +445,8 @@ class Expectiminimax<G extends Game<G>> {
           return maxScore;
         } else if (score >= betaP) {
           assert(() {
-            final checkScore =
-                chance.expectedValue((g) => scoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore = chance
+                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
             assert(checkScore >= beta, '$checkScore is not >= $beta');
             assert(maxScore >= beta, '$maxScore is not >= $beta');
             return true;
@@ -465,7 +460,20 @@ class Expectiminimax<G extends Game<G>> {
     return sum;
   }
 
-  double scoreGame(G game, int depth, double alpha, double beta) {
+  /// Negamax algorithm phase, choose the best move for the current player.
+  ///
+  /// If `game.isMaxing` flips, this will recurse to return
+  /// `-negamax(game, depth, -beta, -alpha`, so that we can perform max and
+  /// min nodes with one consistent logical pathway (fewer bugs).
+  double negaScoreGame(G game, int depth, double alpha, double beta) {
+    if (game.isMaxing != _isMaxing) {
+      _isMaxing = !_isMaxing;
+      final score = -negaScoreGame(game, depth, -beta, -alpha);
+      assert(_isMaxing == game.isMaxing);
+      _isMaxing = !_isMaxing;
+      return score;
+    }
+
     if (!DateTime.now().isBefore(timeout)) {
       throw TimeoutException('Search timed out, backing out');
     }
@@ -476,13 +484,15 @@ class Expectiminimax<G extends Game<G>> {
       stats.ttMisses++;
       stats.nodesSearchedByPly[max(depth, 0)]++;
       if (depth <= 0) {
-        return MoveScore(score: game.score, moveIdx: null);
+        return MoveScore(
+            score: game.score * (game.isMaxing ? 1.0 : -1.0), moveIdx: null);
       }
 
       final moves = game.getMoves();
 
       if (moves.isEmpty) {
-        return MoveScore(score: game.score, moveIdx: null);
+        return MoveScore(
+            score: game.score * (game.isMaxing ? 1.0 : -1.0), moveIdx: null);
       }
 
       var firstMoveIdx = lastBestMoveIdx;
@@ -511,70 +521,37 @@ class Expectiminimax<G extends Game<G>> {
         return MoveScore(score: score, moveIdx: moveIdx);
       }
 
-      if (game.isMaxing) {
-        var maxScore = -2.0;
-        if (firstMoveIdx != null && firstMoveIdx < moves.length) {
-          final score =
-              scoreMove(moves[firstMoveIdx], game, depth - 1, alpha, beta);
-          if (score >= beta && useAlphaBeta) {
-            stats.cutoffsByPly[depth]++;
-            return moveScore(score: score, moveIdx: firstMoveIdx);
-          }
-          maxScore = max(maxScore, score);
-          alpha = max(alpha, score);
+      var maxScore = -2.0;
+      if (firstMoveIdx != null && firstMoveIdx < moves.length) {
+        final score =
+            scoreMove(moves[firstMoveIdx], game, depth - 1, alpha, beta);
+        if (score >= beta && useAlphaBeta) {
+          stats.cutoffsByPly[depth]++;
+          return moveScore(score: score, moveIdx: firstMoveIdx);
         }
-
-        var bestMove = firstMoveIdx ?? 0;
-        for (var i = 0; i < moves.length; ++i) {
-          if (i == firstMoveIdx) {
-            continue;
-          }
-          final move = moves[i];
-          final score = scoreMove(move, game, depth - 1, alpha, beta);
-          if (score > maxScore) {
-            bestMove = i;
-          }
-          if (score >= beta && useAlphaBeta) {
-            stats.cutoffsByPly[depth]++;
-            return moveScore(score: score, moveIdx: i);
-          }
-          maxScore = max(maxScore, score);
-          alpha = max(alpha, score);
-        }
-
-        return moveScore(score: maxScore, moveIdx: bestMove);
-      } else {
-        var minScore = 2.0;
-        if (firstMoveIdx != null && firstMoveIdx < moves.length) {
-          final score =
-              scoreMove(moves[firstMoveIdx], game, depth - 1, alpha, beta);
-          if (score <= alpha && useAlphaBeta) {
-            stats.cutoffsByPly[depth]++;
-            return moveScore(score: score, moveIdx: firstMoveIdx);
-          }
-          minScore = min(minScore, score);
-          beta = min(beta, score);
-        }
-        var bestMove = firstMoveIdx ?? 0;
-        for (var i = 0; i < moves.length; ++i) {
-          if (i == firstMoveIdx) {
-            continue;
-          }
-          final move = moves[i];
-          final score = scoreMove(move, game, depth - 1, alpha, beta);
-          if (score < minScore) {
-            bestMove = i;
-          }
-          if (score <= alpha && useAlphaBeta) {
-            stats.cutoffsByPly[depth]++;
-            return moveScore(score: score, moveIdx: i);
-          }
-          minScore = min(minScore, score);
-          beta = min(beta, score);
-        }
-
-        return moveScore(score: minScore, moveIdx: bestMove);
+        maxScore = max(maxScore, score);
+        alpha = max(alpha, score);
       }
+
+      var bestMove = firstMoveIdx ?? 0;
+      for (var i = 0; i < moves.length; ++i) {
+        if (i == firstMoveIdx) {
+          continue;
+        }
+        final move = moves[i];
+        final score = scoreMove(move, game, depth - 1, alpha, beta);
+        if (score > maxScore) {
+          bestMove = i;
+        }
+        if (score >= beta && useAlphaBeta) {
+          stats.cutoffsByPly[depth]++;
+          return moveScore(score: score, moveIdx: i);
+        }
+        maxScore = max(maxScore, score);
+        alpha = max(alpha, score);
+      }
+
+      return moveScore(score: maxScore, moveIdx: bestMove);
     });
   }
 }

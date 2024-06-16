@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:expectiminimax/src/expectiminimax.dart';
+import 'package:expectiminimax/src/game.dart';
 
 /// A simple transposition table that takes a game's hash and creates four
 /// candidate buckets based on HASH + n % size for n=0..3.
@@ -6,8 +9,7 @@ import 'package:expectiminimax/src/expectiminimax.dart';
 /// By default, this does not require strict equality but rather assumes a good
 /// enough hashing algorithm. Set the optional parameter [isStrict] to true to
 /// prevent hash collisions, although do note that this takes up more memory.
-class TranspositionTable<G> {
-
+class TranspositionTable<G extends Game<G>> {
   /// Total number of entries in the transition table.
   final int size;
 
@@ -39,19 +41,26 @@ class TranspositionTable<G> {
 
     if (bucket == null) {
       final moveScore = ifAbsent(null);
+      var maxScore = _maxScoreFor(moveScore.score, beta: beta);
+      var minScore = _minScoreFor(moveScore.score, alpha: alpha);
+      if (!game.isMaxing) {
+        final temp = maxScore;
+        maxScore = minScore == null ? null : -minScore;
+        minScore = temp == null ? null : -temp;
+      }
       _add(
         game,
         hash: game.hashCode,
         work: work,
-        maxScore: _maxScoreFor(moveScore.score, beta: beta),
-        minScore: _minScoreFor(moveScore.score, alpha: alpha),
+        maxScore: maxScore,
+        minScore: minScore,
         moveIdx: moveScore.moveIdx,
       );
 
       return moveScore.score;
     } else {
       final entry = _table[bucket]!;
-      final oldScore = _validScore(entry, work, alpha, beta);
+      final oldScore = _validScore(entry, work, alpha, beta, game.isMaxing);
 
       if (oldScore != null) {
         return oldScore;
@@ -68,6 +77,12 @@ class TranspositionTable<G> {
 		}
 
         // Mutate existing to avoid thrashing GC.
+        if (!game.isMaxing) {
+          final temp = maxScore;
+          maxScore = minScore == null ? null : -minScore;
+          minScore = temp == null ? null : -temp;
+        }
+
         _table[bucket]!
           ..hash = hash
           ..work = work
@@ -82,11 +97,19 @@ class TranspositionTable<G> {
   }
 
   double? _validScore(
-      _PositionData entry, int work, double alpha, double beta) {
+      _PositionData entry, int work, double alpha, double beta, bool isMaxing) {
+    var factor = 1.0;
+    if (!isMaxing) {
+      final temp = beta;
+      beta = -alpha;
+      alpha = -temp;
+      factor = -1.0;
+    }
+
     if (entry.minScore == 1.0) {
-      return 1.0;
+      return factor * 1.0;
     } else if (entry.maxScore == -1.0) {
-      return -1.0;
+      return factor * -1.0;
     }
 
     if (entry.work < work) {
@@ -98,11 +121,11 @@ class TranspositionTable<G> {
     }
 
     if (entry.minScore == entry.maxScore) {
-      return entry.minScore;
+      return factor * entry.minScore!;
     } else if (entry.maxScore != null && entry.maxScore! <= alpha) {
-      return entry.maxScore;
+      return factor * entry.maxScore!;
     } else if (entry.minScore != null && entry.minScore! >= beta) {
-      return entry.minScore;
+      return factor * entry.minScore!;
     }
 
     return null;
