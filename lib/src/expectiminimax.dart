@@ -68,7 +68,8 @@ class Expectiminimax<G extends Game<G>> {
 
     try {
       if (useIterativeDeepening) {
-        for (var i = 1; i < maxDepth; i += 1) {
+        // Increment by 2 because scores don't change on chance node layers.
+        for (var i = 2; i < maxDepth; i += 2) {
           bestMove = bestBy<Move<G>, num>(
               moves, (m) => scoreMove(m, game, i, alpha, beta))!;
         }
