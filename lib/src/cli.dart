@@ -456,8 +456,8 @@ abstract class ParseConfigCommand extends Command {
             help: 'max depth to search')
         ..addOption('max-time',
             abbr: 't',
-            defaultsTo: defaults.maxDepth.toString(),
-            help: 'max time to search')
+            defaultsTo: defaults.maxTime.inMilliseconds.toString(),
+            help: 'max time to search, in milliseconds')
         ..addFlag('iterative-deepening',
             defaultsTo: defaults.iterativeDeepening,
             help: 'enable iterative deepening')

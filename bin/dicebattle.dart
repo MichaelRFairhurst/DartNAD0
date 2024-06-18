@@ -255,7 +255,7 @@ void main(List<String> args) {
   CliTools<DiceBattle>(
     defaultConfig: ExpectiminimaxConfig(
       maxDepth: 50,
-      maxTime: Duration(microseconds: 20),
+      maxTime: Duration(milliseconds: 25),
     ),
     startingGame: DiceBattle(
       p1Turn: true,

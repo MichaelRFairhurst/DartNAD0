@@ -576,7 +576,7 @@ void main(List<String> args) {
   CliTools<Backgammon>(
     defaultConfig: ExpectiminimaxConfig(
       maxDepth: 40,
-      maxTime: Duration(milliseconds: 1),
+      maxTime: Duration(milliseconds: 25),
     ),
     startingGame: Backgammon(
       points: startingBoard,
