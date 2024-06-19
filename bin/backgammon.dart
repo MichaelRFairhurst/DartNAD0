@@ -281,8 +281,8 @@ class Backgammon extends Game<Backgammon> {
         p1Score += points[i] * (boardSize - i);
         p1Checkers -= points[i];
       } else if (points[i] < 0) {
-        p2Checkers += -points[i];
-        p2Score -= -points[i] * i;
+        p2Score += -points[i] * i;
+        p2Checkers -= -points[i];
       }
 
       if (points[i] == 1) {
