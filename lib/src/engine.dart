@@ -1,5 +1,3 @@
-import 'package:expectiminimax/src/config.dart';
-import 'package:expectiminimax/src/expectiminimax.dart';
 import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/stats.dart';
@@ -20,11 +18,15 @@ abstract class Engine<G extends Game<G>> {
   /// Get data from the engine about its performance.
   SearchStats get stats;
 
-  /// Build an engine from the given config.
-  static Engine<G> forConfig<G extends Game<G>>({
-    /// TODO: abstract this so different engines take different configs
-    required ExpectiminimaxConfig config,
-  }) {
-    return Expectiminimax(config: config);
-  }
+}
+
+/// Base class for configuration of a specific engine.
+///
+/// For instance, expectiminimax will have different tuning options than monte
+/// carlo tree search.
+///
+/// This configuration object should be able to produce the engine based on its
+/// own properties indicating the various settings and options.
+abstract class EngineConfig {
+  Engine<G> buildEngine<G extends Game<G>>();
 }

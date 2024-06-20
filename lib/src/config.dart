@@ -1,5 +1,9 @@
+import 'package:expectiminimax/src/engine.dart';
+import 'package:expectiminimax/src/expectiminimax.dart';
+import 'package:expectiminimax/src/game.dart';
+
 /// Config object for defining expectiminimax search parameters.
-class ExpectiminimaxConfig {
+class ExpectiminimaxConfig implements EngineConfig {
   const ExpectiminimaxConfig({
     required this.maxDepth,
     required this.maxTime,
@@ -9,6 +13,10 @@ class ExpectiminimaxConfig {
     this.strictTranspositions = false,
     @Deprecated('Internal setting for development only.') this.debugSetting,
   });
+
+  @override
+  Expectiminimax<G> buildEngine<G extends Game<G>>() =>
+      Expectiminimax(config: this);
 
   /// The max depth of plies to search.
   final int maxDepth;

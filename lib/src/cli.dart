@@ -6,11 +6,9 @@ import 'package:expectiminimax/src/engine.dart';
 import 'package:thread/thread.dart';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/elo.dart';
-import 'package:expectiminimax/src/expectiminimax.dart';
 import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/perft.dart';
-import 'package:expectiminimax/src/stats.dart';
 
 class CliTools<G extends Game<G>> {
   final G startingGame;
@@ -85,20 +83,20 @@ class WatchGame<G extends Game<G>> extends ParseConfigCommand {
   }
 
   @override
-  void runWithConfigs(List<ExpectiminimaxConfig> configs) {
+  void runWithConfigs(List<EngineConfig> configs) {
     final config = configs[0];
     final printStats = argResults!['print-stats'];
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
 
     final random = Random(seed);
-    var expectiminimax = Expectiminimax<G>(config: config);
+    var engine = config.buildEngine<G>();
     var game = startingGame;
     var steps = 0;
     while (game.score != 1.0 && game.score != -1.0) {
       steps++;
       print('step $steps');
-      final move = expectiminimax.chooseBest(game.getMoves(), game);
+      final move = engine.chooseBest(game.getMoves(), game);
       print('Player chooses: ${move.description}');
       final chance = move.perform(game);
       final outcome = chance.pick(random.nextDouble());
@@ -115,9 +113,9 @@ class WatchGame<G extends Game<G>> extends ParseConfigCommand {
 
     if (printStats == 'all') {
       print('steps $steps');
-      print(expectiminimax.stats);
+      print(engine.stats);
     } else if (printStats == 'time') {
-      print('took ${expectiminimax.stats.duration.inMilliseconds}ms');
+      print('took ${engine.stats.duration.inMilliseconds}ms');
     }
   }
 }
@@ -142,33 +140,30 @@ class Benchmark<G extends Game<G>> extends ParseConfigCommand {
   }
 
   @override
-  void runWithConfigs(List<ExpectiminimaxConfig> configs) {
+  void runWithConfigs(List<EngineConfig> configs) {
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
     final config = configs[0];
     final count = int.parse(argResults!['count']);
-    final stats = SearchStats(config.maxDepth);
 
     final random = Random(seed);
-    var expectiminimax = Expectiminimax<G>(config: config);
+    var engine = config.buildEngine<G>();
 
     for (var i = 0; i < count; ++i) {
       var game = startingGame;
-      if (argResults!['refresh'] && i != 0) {
-        expectiminimax = Expectiminimax<G>(config: config);
+      if (argResults!['refresh']) {
+        engine.clearCache();
       }
 
       while (game.score != 1.0 && game.score != -1.0) {
-        final move = expectiminimax.chooseBest(game.getMoves(), game);
+        final move = engine.chooseBest(game.getMoves(), game);
         final chance = move.perform(game);
         final outcome = chance.pick(random.nextDouble());
         game = outcome.outcome;
       }
-
-      stats.add(expectiminimax.stats);
     }
 
-    print(stats);
+    print(engine.stats);
   }
 }
 
@@ -195,7 +190,7 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
   }
 
   @override
-  void runWithConfigs(List<ExpectiminimaxConfig> configs) {
+  void runWithConfigs(List<EngineConfig> configs) {
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
     final config = configs[0];
@@ -204,16 +199,14 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
     final compareChoices = argResults!['choices'];
 
     final random = Random(seed);
-    var algs = configs.map((c) => Engine.forConfig<G>(config: c)).toList();
-    final stats = configs.map((c) => SearchStats(c.maxDepth)).toList();
+    var algs = configs.map((c) => c.buildEngine<G>()).toList();
 
     for (var i = 0; i < count; ++i) {
       var game = startingGame;
       var turn = 0;
       if (argResults!['refresh'] && i != 0) {
         for (var c = 0; c < configs.length; ++c) {
-          stats[c].add(algs[c].stats);
-          algs[c] = Engine.forConfig<G>(config: configs[c]);
+          algs[c].clearCache();
         }
       }
 
@@ -236,22 +229,17 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
       }
     }
 
-    for (var c = 0; c < configs.length; ++c) {
-      stats[c].add(algs[c].stats);
-      algs[c] = Engine.forConfig<G>(config: configs[c]);
-    }
-
     print('Baseline stats:');
-    print(stats[0]);
+    print(algs[0].stats);
     for (var c = 1; c < configs.length; ++c) {
       print('');
       print('Alternative stats #$c (--vs):');
-      print(stats[c]);
+      print(algs[c].stats);
     }
     for (var c = 1; c < configs.length; ++c) {
       print('');
       print('Comparative stats (alternative #$c - baseline):');
-      print(stats[c] - stats[0]);
+      print(algs[c].stats - algs[0].stats);
     }
   }
 }
@@ -295,8 +283,7 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
         defaultsTo: false);
   }
 
-  Thread startThread(List<Engine<G>> algs, List<ExpectiminimaxConfig> configs,
-      Random random, bool refresh) {
+  Thread startThread(List<Engine<G>> algs, Random random, bool refresh) {
     return Thread((events) {
       events.on('game', (List<int> players) {
         var game = startingGame;
@@ -348,7 +335,7 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
   }
 
   @override
-  void runWithConfigs(List<ExpectiminimaxConfig> configs) {
+  void runWithConfigs(List<EngineConfig> configs) {
     final elo = FullHistoryElo<int>();
     elo.init(List.generate(configs.length, (i) => i));
     final seed =
@@ -356,7 +343,7 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
     final count = int.parse(argResults!['count']);
 
     final random = Random(seed);
-    final algs = configs.map((c) => Engine.forConfig<G>(config: c)).toList();
+    final algs = configs.map((c) => c.buildEngine<G>()).toList();
     final refresh = argResults!['refresh'];
 
     print('[GAMES]');
@@ -367,8 +354,7 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
     final esc = String.fromCharCode(27);
     final clearStr = '$esc[1A$esc[2K' * (configs.length + 2);
 
-    final threads =
-        List.generate(8, (i) => startThread(algs, configs, random, refresh));
+    final threads = List.generate(8, (i) => startThread(algs, random, refresh));
 
     var startedGames = 0;
     var game = 0;
@@ -442,7 +428,7 @@ abstract class ParseConfigCommand extends Command {
     argParser.addCommand('xmm', xmmParser(defaultConfig));
   }
 
-  void runWithConfigs(List<ExpectiminimaxConfig> configs);
+  void runWithConfigs(List<EngineConfig> configs);
 
   @override
   String get usageFooter => '''
@@ -541,9 +527,9 @@ ${xmmParser(defaultConfig).usage.splitMapJoin(
             help: 'check == on transposition entries to avoid hash collisions')
         ..addOption('debug-setting', hide: true);
 
-  ExpectiminimaxConfig getPrimaryConfig() => getConfigFromResults(argResults!);
+  EngineConfig getPrimaryConfig() => getConfigFromResults(argResults!);
 
-  ExpectiminimaxConfig getConfigFromResults(ArgResults results) {
+  EngineConfig getConfigFromResults(ArgResults results) {
     switch (results.command?.name) {
       case 'xmm':
         return getXmmConfig(results.command!);
