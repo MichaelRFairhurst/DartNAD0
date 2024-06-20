@@ -379,16 +379,19 @@ void main(List<String> args) {
 }
 ```
 
+The command line interface supports multiple engines, use `xmm` to specify the
+expectiminimax engine. Run `help` to see all available engines.
+
 Basic usage:
 
 ```bash
 # Watch a game of AI vs AI, with searches up to 50ms in duration.
 # Note: pleasant viewership requires your game implement `toString()` :)
-dart bin/my_game.dart watch --max-time=50
+dart bin/my_game.dart watch xmm --max-time=50
 
 # Run 100 games, searching each move up to 8 plies in depth, and print
 # performance stats.
-dart bin/my_game.dart bench -c 100 --max-depth=8
+dart bin/my_game.dart bench -c 100 xmm --max-depth=8
 
 # Run the 'perft' tool on your game, a useful benchmark measuring how long it
 # takes to perform all possible moves up to 6 moves ahead.
@@ -403,10 +406,10 @@ dart bin/my_game.dart bench --help
 dart bin/my_game.dart perft --help
 ```
 
-### Search config
+### Expectiminimax engine config
 
-You can configure the engine settings for your game in many of the subcommands
-by using the following settings:
+You can configure the xmm engine settings for your game in many of the
+subcommands by using the following settings:
 
 - `--max-depth' or `-d`: set maximum search depth. Prefer high and rely on
   timeouts to stop the search, unless you have disabled iterative deepening.

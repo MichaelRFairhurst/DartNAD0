@@ -39,7 +39,7 @@ class CliTools<G extends Game<G>> {
 
     final configs = sections.skip(1).toList();
 
-    final commandRunner = CommandRunner('expectiminimax cli',
+    final commandRunner = ListEnginesCommandRunner('dart your_wrapper.dart',
         'Pre-built CLI tools to run expectiminimax on custom games')
       ..addCommand(PerftCommand(startingGame))
       // TODO: play two AIs against each other
@@ -51,6 +51,17 @@ class CliTools<G extends Game<G>> {
 
     commandRunner.run(sections[0]);
   }
+}
+
+class ListEnginesCommandRunner extends CommandRunner {
+  ListEnginesCommandRunner(super.name, super.description);
+
+  @override
+  String get usageFooter => '''
+
+Available engines for the above commands:
+  xmm       Expectiminimax engine.
+''';
 }
 
 class WatchGame<G extends Game<G>> extends ParseConfigCommand {
@@ -428,27 +439,78 @@ abstract class ParseConfigCommand extends Command {
   final ExpectiminimaxConfig defaultConfig;
 
   ParseConfigCommand(this.defaultConfig, this.configSpecs) {
-    addConfigOptionsToParser(argParser, defaultConfig);
+    argParser.addCommand('xmm', xmmParser(defaultConfig));
   }
 
   void runWithConfigs(List<ExpectiminimaxConfig> configs);
 
   @override
+  String get usageFooter => '''
+
+Additionally, running this command requires specifying one or more engines:
+
+    xmm               Expectiminimax game engine.
+                      Example: $name xmm --max-depth 8
+
+Some commands can accept multiple engines. These engines may be separated with '--vs' flags.
+
+    --vs              Specify an additional engine to $name.
+                      Example: $name xmm --max-depth 8 --vs xmm -d=10 --vs xmm -d=12
+
+'xmm' engine config options:
+
+${xmmParser(defaultConfig).usage.splitMapJoin(
+            '\n',
+            onNonMatch: (line) => '    $line',
+          )}
+''';
+
+  @override
   void run() {
+    if (argResults?.command == null) {
+      print('Error: no engine specified, cannot proceed.');
+      print('');
+      printUsage();
+      return;
+    }
+
     final configParser = ArgParser(allowTrailingOptions: false);
-    addConfigOptionsToParser(configParser, defaultConfig);
+    configParser.addCommand('xmm', xmmParser(defaultConfig));
 
-    final configs = [
-      getPrimaryConfig(),
-      ...configSpecs
-          .map((args) => getConfigFromResults(configParser.parse(args)))
-          .toList(),
-    ];
+    try {
+      final configs = [
+        getPrimaryConfig(),
+        ...configSpecs.map((args) {
+          if (args.first.startsWith('-')) {
+            throw 'Error: Specify an engine before engine flags: "$args"';
+          }
+          if (!{'xmm'}.contains(args.first)) {
+            throw 'Error: Invalid engine name: "${args.first}"';
+          }
+          try {
+            return getConfigFromResults(configParser.parse(args));
+          } catch (e) {
+            throw 'Error: Misconfigured engine "$args"\n\n$e';
+          }
+        })
+      ];
 
-    runWithConfigs(configs);
+      runWithConfigs(configs);
+    } catch (e) {
+      print(e);
+      print('');
+      printUsage();
+    }
   }
 
-  void addConfigOptionsToParser(
+  @override
+  String get invocation =>
+      '$name [--$name-flags] `engine` [--engine-flags] [--vs `engine [--engineflags] --vs ...]';
+
+  ArgParser xmmParser(ExpectiminimaxConfig defaults) =>
+      addXmmOptionsToParser(ArgParser(), defaults);
+
+  ArgParser addXmmOptionsToParser(
           ArgParser parser, ExpectiminimaxConfig defaults) =>
       parser
         ..addOption('max-depth',
@@ -481,16 +543,26 @@ abstract class ParseConfigCommand extends Command {
 
   ExpectiminimaxConfig getPrimaryConfig() => getConfigFromResults(argResults!);
 
-  ExpectiminimaxConfig getConfigFromResults(ArgResults results) =>
-      ExpectiminimaxConfig(
-        maxDepth: int.parse(results['max-depth']),
-        maxTime: Duration(milliseconds: int.parse(results['max-time'])),
-        iterativeDeepening: results['iterative-deepening'],
-        chanceNodeProbeWindow:
-            ProbeWindow.values.byName(results['chance-node-probe-window']),
-        transpositionTableSize: int.parse(results['transposition-table-size']),
-        strictTranspositions: results['strict-transpositions'],
-        // ignore: deprecated_member_use_from_same_package
-        debugSetting: results['debug-setting'],
-      );
+  ExpectiminimaxConfig getConfigFromResults(ArgResults results) {
+    switch (results.command?.name) {
+      case 'xmm':
+        return getXmmConfig(results.command!);
+      default:
+        throw 'bad engine name ${results.command?.name}';
+    }
+  }
+
+  ExpectiminimaxConfig getXmmConfig(ArgResults results) {
+    return ExpectiminimaxConfig(
+      maxDepth: int.parse(results['max-depth']),
+      maxTime: Duration(milliseconds: int.parse(results['max-time'])),
+      iterativeDeepening: results['iterative-deepening'],
+      chanceNodeProbeWindow:
+          ProbeWindow.values.byName(results['chance-node-probe-window']),
+      transpositionTableSize: int.parse(results['transposition-table-size']),
+      strictTranspositions: results['strict-transpositions'],
+      // ignore: deprecated_member_use_from_same_package
+      debugSetting: results['debug-setting'],
+    );
+  }
 }
