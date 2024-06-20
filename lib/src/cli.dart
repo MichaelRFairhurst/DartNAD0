@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:expectiminimax/src/engine.dart';
 import 'package:thread/thread.dart';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/elo.dart';
@@ -192,7 +193,7 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
     final compareChoices = argResults!['choices'];
 
     final random = Random(seed);
-    var algs = configs.map((c) => Expectiminimax<G>(config: c)).toList();
+    var algs = configs.map((c) => Engine.forConfig<G>(config: c)).toList();
     final stats = configs.map((c) => SearchStats(c.maxDepth)).toList();
 
     for (var i = 0; i < count; ++i) {
@@ -201,7 +202,7 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
       if (argResults!['refresh'] && i != 0) {
         for (var c = 0; c < configs.length; ++c) {
           stats[c].add(algs[c].stats);
-          algs[c] = Expectiminimax<G>(config: configs[c]);
+          algs[c] = Engine.forConfig<G>(config: configs[c]);
         }
       }
 
@@ -226,7 +227,7 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
 
     for (var c = 0; c < configs.length; ++c) {
       stats[c].add(algs[c].stats);
-      algs[c] = Expectiminimax<G>(config: configs[c]);
+      algs[c] = Engine.forConfig<G>(config: configs[c]);
     }
 
     print('Baseline stats:');
@@ -283,8 +284,8 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
         defaultsTo: false);
   }
 
-  Thread startThread(List<Expectiminimax<G>> algs,
-      List<ExpectiminimaxConfig> configs, Random random, bool refresh) {
+  Thread startThread(List<Engine<G>> algs, List<ExpectiminimaxConfig> configs,
+      Random random, bool refresh) {
     return Thread((events) {
       events.on('game', (List<int> players) {
         var game = startingGame;
@@ -295,8 +296,8 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
         final playerB = algs[bIdx];
 
         if (refresh) {
-          algs[bIdx].transpositionTable.clear();
-          algs[aIdx].transpositionTable.clear();
+          algs[bIdx].clearCache();
+          algs[aIdx].clearCache();
         }
 
         for (int i = 0; true; ++i) {
@@ -344,7 +345,7 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
     final count = int.parse(argResults!['count']);
 
     final random = Random(seed);
-    final algs = configs.map((c) => Expectiminimax<G>(config: c)).toList();
+    final algs = configs.map((c) => Engine.forConfig<G>(config: c)).toList();
     final refresh = argResults!['refresh'];
 
     print('[GAMES]');
