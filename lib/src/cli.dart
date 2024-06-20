@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:expectiminimax/src/engine.dart';
+import 'package:expectiminimax/src/other_engines/random_engine.dart';
 import 'package:thread/thread.dart';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/elo.dart';
@@ -59,6 +60,7 @@ class ListEnginesCommandRunner extends CommandRunner {
 
 Available engines for the above commands:
   xmm       Expectiminimax engine.
+  random    Utility engine which simply picks a random move.
 ''';
 }
 
@@ -426,6 +428,7 @@ abstract class ParseConfigCommand extends Command {
 
   ParseConfigCommand(this.defaultConfig, this.configSpecs) {
     argParser.addCommand('xmm', xmmParser(defaultConfig));
+    argParser.addCommand('random', randomEngineParser());
   }
 
   void runWithConfigs(List<EngineConfig> configs);
@@ -437,15 +440,24 @@ Additionally, running this command requires specifying one or more engines:
 
     xmm               Expectiminimax game engine.
                       Example: $name xmm --max-depth 8
+    random            Simple engine which just picks random moves.
+                      Example: $name random --seed 0
 
 Some commands can accept multiple engines. These engines may be separated with '--vs' flags.
 
     --vs              Specify an additional engine to $name.
-                      Example: $name xmm --max-depth 8 --vs xmm -d=10 --vs xmm -d=12
+                      Example: $name xmm --max-depth 8 --vs xmm -d=10 --vs random
 
 'xmm' engine config options:
 
 ${xmmParser(defaultConfig).usage.splitMapJoin(
+            '\n',
+            onNonMatch: (line) => '    $line',
+          )}
+
+'random' engine config options:
+
+${randomEngineParser().usage.splitMapJoin(
             '\n',
             onNonMatch: (line) => '    $line',
           )}
@@ -462,6 +474,7 @@ ${xmmParser(defaultConfig).usage.splitMapJoin(
 
     final configParser = ArgParser(allowTrailingOptions: false);
     configParser.addCommand('xmm', xmmParser(defaultConfig));
+    configParser.addCommand('random', randomEngineParser());
 
     try {
       final configs = [
@@ -470,7 +483,7 @@ ${xmmParser(defaultConfig).usage.splitMapJoin(
           if (args.first.startsWith('-')) {
             throw 'Error: Specify an engine before engine flags: "$args"';
           }
-          if (!{'xmm'}.contains(args.first)) {
+          if (!{'xmm', 'random'}.contains(args.first)) {
             throw 'Error: Invalid engine name: "${args.first}"';
           }
           try {
@@ -527,12 +540,17 @@ ${xmmParser(defaultConfig).usage.splitMapJoin(
             help: 'check == on transposition entries to avoid hash collisions')
         ..addOption('debug-setting', hide: true);
 
+  ArgParser randomEngineParser() => ArgParser(allowTrailingOptions: false)
+    ..addOption('seed', abbr: 's', help: 'seed for random move selection.');
+
   EngineConfig getPrimaryConfig() => getConfigFromResults(argResults!);
 
   EngineConfig getConfigFromResults(ArgResults results) {
     switch (results.command?.name) {
       case 'xmm':
         return getXmmConfig(results.command!);
+      case 'random':
+        return getRandomEngineConfig(results.command!);
       default:
         throw 'bad engine name ${results.command?.name}';
     }
@@ -549,6 +567,12 @@ ${xmmParser(defaultConfig).usage.splitMapJoin(
       strictTranspositions: results['strict-transpositions'],
       // ignore: deprecated_member_use_from_same_package
       debugSetting: results['debug-setting'],
+    );
+  }
+
+  RandomEngineConfig getRandomEngineConfig(ArgResults results) {
+    return RandomEngineConfig(
+      seed: results.wasParsed('seed') ? int.parse(results['seed']) : null,
     );
   }
 }
