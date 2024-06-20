@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:expectiminimax/src/engine.dart';
+import 'package:expectiminimax/src/other_engines/nth_engine.dart';
 import 'package:expectiminimax/src/other_engines/random_engine.dart';
 import 'package:thread/thread.dart';
 import 'package:expectiminimax/src/config.dart';
@@ -61,6 +62,7 @@ class ListEnginesCommandRunner extends CommandRunner {
 Available engines for the above commands:
   xmm       Expectiminimax engine.
   random    Utility engine which simply picks a random move.
+  nth       Utility engine which always picks the nth move or nth-to-last move.
 ''';
 }
 
@@ -429,6 +431,7 @@ abstract class ParseConfigCommand extends Command {
   ParseConfigCommand(this.defaultConfig, this.configSpecs) {
     argParser.addCommand('xmm', xmmParser(defaultConfig));
     argParser.addCommand('random', randomEngineParser());
+    argParser.addCommand('nth', nthEngineParser());
   }
 
   void runWithConfigs(List<EngineConfig> configs);
@@ -442,11 +445,13 @@ Additionally, running this command requires specifying one or more engines:
                       Example: $name xmm --max-depth 8
     random            Simple engine which just picks random moves.
                       Example: $name random --seed 0
+    nth               Simple engine which always picks the nth move.
+                      Example: $name nth -n 0
 
 Some commands can accept multiple engines. These engines may be separated with '--vs' flags.
 
     --vs              Specify an additional engine to $name.
-                      Example: $name xmm --max-depth 8 --vs xmm -d=10 --vs random
+                      Example: $name xmm --max-depth 8 --vs nth -n 0 --vs random
 
 'xmm' engine config options:
 
@@ -458,6 +463,13 @@ ${xmmParser(defaultConfig).usage.splitMapJoin(
 'random' engine config options:
 
 ${randomEngineParser().usage.splitMapJoin(
+            '\n',
+            onNonMatch: (line) => '    $line',
+          )}
+
+'nth' engine config options:
+
+${nthEngineParser().usage.splitMapJoin(
             '\n',
             onNonMatch: (line) => '    $line',
           )}
@@ -475,6 +487,7 @@ ${randomEngineParser().usage.splitMapJoin(
     final configParser = ArgParser(allowTrailingOptions: false);
     configParser.addCommand('xmm', xmmParser(defaultConfig));
     configParser.addCommand('random', randomEngineParser());
+    configParser.addCommand('nth', nthEngineParser());
 
     try {
       final configs = [
@@ -483,7 +496,7 @@ ${randomEngineParser().usage.splitMapJoin(
           if (args.first.startsWith('-')) {
             throw 'Error: Specify an engine before engine flags: "$args"';
           }
-          if (!{'xmm', 'random'}.contains(args.first)) {
+          if (!{'xmm', 'random', 'nth'}.contains(args.first)) {
             throw 'Error: Invalid engine name: "${args.first}"';
           }
           try {
@@ -543,6 +556,12 @@ ${randomEngineParser().usage.splitMapJoin(
   ArgParser randomEngineParser() => ArgParser(allowTrailingOptions: false)
     ..addOption('seed', abbr: 's', help: 'seed for random move selection.');
 
+  ArgParser nthEngineParser() => ArgParser(allowTrailingOptions: false)
+    ..addFlag('from-end',
+        abbr: 'e', help: 'select nth move from the end instead of the start')
+    ..addOption('n', abbr: 'n',
+        defaultsTo: '0', help: '0-based index for which move to select');
+
   EngineConfig getPrimaryConfig() => getConfigFromResults(argResults!);
 
   EngineConfig getConfigFromResults(ArgResults results) {
@@ -551,6 +570,8 @@ ${randomEngineParser().usage.splitMapJoin(
         return getXmmConfig(results.command!);
       case 'random':
         return getRandomEngineConfig(results.command!);
+      case 'nth':
+        return getNthEngineConfig(results.command!);
       default:
         throw 'bad engine name ${results.command?.name}';
     }
@@ -573,6 +594,13 @@ ${randomEngineParser().usage.splitMapJoin(
   RandomEngineConfig getRandomEngineConfig(ArgResults results) {
     return RandomEngineConfig(
       seed: results.wasParsed('seed') ? int.parse(results['seed']) : null,
+    );
+  }
+
+  NthEngineConfig getNthEngineConfig(ArgResults results) {
+    return NthEngineConfig(
+      direction: results['from-end'] ? Direction.fromEnd : Direction.fromStart,
+      offset: int.parse(results['n']),
     );
   }
 }
