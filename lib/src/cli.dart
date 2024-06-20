@@ -482,7 +482,7 @@ ${xmmParser(defaultConfig).usage.splitMapJoin(
       ];
 
       runWithConfigs(configs);
-    } catch (e) {
+    } on FormatException catch (e) {
       print(e);
       print('');
       printUsage();
