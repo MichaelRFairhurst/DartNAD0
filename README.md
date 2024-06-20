@@ -3,8 +3,8 @@
 A version of minimax that allows for random events, coded in dart.
 
 Note that expectiminimax is often much slower than minimax as it cannot leverage
-alpha/beta pruning nearly as effectively. In the future I would like to
-parallelize this, etc., and support parallelized MCTS too.
+alpha/beta pruning nearly as effectively. The alternative approach which can
+help in some games, MCTS, is also supported.
 
 Mildy optimized, and comes with prebuilt command line tools, use for your own
 fun!
@@ -18,6 +18,7 @@ fun!
 - killer move heuristic
 - \*-minimax (alpha beta pruning on CHANCE nodes)
 - star2-style probing pass on CHANCE descendents
+- MCTS with UCT-based node selection
 - SPRT testing support
 
 ## TODO
@@ -30,7 +31,8 @@ fun!
 - Reversible games: Reduce allocation & GC overhead by using mutable game
   objects and making/unmaking moves
 - Zobrist hashing
-- MCTS. It aint expectiminimax, but it is a better choice for some games.
+- Further optimize MCTS: support pUct, more parameters, transposition tables,
+  additional selection methods such as RAVE
 - Late move reductions
 - Support roll-to-move style games more naturally
 - Principle-Variation search (prototyped but not offering improvement).
@@ -379,8 +381,9 @@ void main(List<String> args) {
 }
 ```
 
-The command line interface supports multiple engines, use `xmm` to specify the
-expectiminimax engine. Run `help` to see all available engines.
+The command line interface supports multiple engines. Use `xmm` to specify the
+expectiminimax engine, and `mcts` to use monte-carlo tree search. Run `help` to
+see all available engines.
 
 Basic usage:
 
@@ -388,6 +391,9 @@ Basic usage:
 # Watch a game of AI vs AI, with searches up to 50ms in duration.
 # Note: pleasant viewership requires your game implement `toString()` :)
 dart bin/my_game.dart watch xmm --max-time=50
+
+# Same as above but with MCTS instead of expectiminimax.
+dart bin/my_game.dart watch mcts --max-time=50
 
 # Run 100 games, searching each move up to 8 plies in depth, and print
 # performance stats.
@@ -439,8 +445,8 @@ subcommands by using the following settings:
 
 ## Performance considerations
 
-The most important consideration is branching factor. If your game has a very
-high branching factor, consider MCTS instead.
+The most important consideration is branching factor, especially if you use the
+expectiminimax engine instead of the MCTS engine.
 
 In general, ensure that all branches of your game are actually unique. For
 example, if a player rolls two six sided dice on their turn in your game, are

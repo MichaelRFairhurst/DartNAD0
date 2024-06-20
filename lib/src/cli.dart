@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:expectiminimax/src/engine.dart';
+import 'package:expectiminimax/src/mcts.dart';
 import 'package:expectiminimax/src/other_engines/nth_engine.dart';
 import 'package:expectiminimax/src/other_engines/random_engine.dart';
 import 'package:thread/thread.dart';
@@ -61,6 +62,7 @@ class ListEnginesCommandRunner extends CommandRunner {
 
 Available engines for the above commands:
   xmm       Expectiminimax engine.
+  mcts      Monte-Carlo Tree Search engine.
   random    Utility engine which simply picks a random move.
   nth       Utility engine which always picks the nth move or nth-to-last move.
 ''';
@@ -430,6 +432,7 @@ abstract class ParseConfigCommand extends Command {
 
   ParseConfigCommand(this.defaultConfig, this.configSpecs) {
     argParser.addCommand('xmm', xmmParser(defaultConfig));
+    argParser.addCommand('mcts', mctsParser(defaultConfig));
     argParser.addCommand('random', randomEngineParser());
     argParser.addCommand('nth', nthEngineParser());
   }
@@ -443,6 +446,8 @@ Additionally, running this command requires specifying one or more engines:
 
     xmm               Expectiminimax game engine.
                       Example: $name xmm --max-depth 8
+    mcts              Monte-Carlo Tree Search game engine.
+                      Example: $name mcts --max-playouts 10000
     random            Simple engine which just picks random moves.
                       Example: $name random --seed 0
     nth               Simple engine which always picks the nth move.
@@ -451,11 +456,18 @@ Additionally, running this command requires specifying one or more engines:
 Some commands can accept multiple engines. These engines may be separated with '--vs' flags.
 
     --vs              Specify an additional engine to $name.
-                      Example: $name xmm --max-depth 8 --vs nth -n 0 --vs random
+                      Example: $name xmm --max-depth 8 --vs mcts --max-playouts 1000 --vs random
 
 'xmm' engine config options:
 
 ${xmmParser(defaultConfig).usage.splitMapJoin(
+            '\n',
+            onNonMatch: (line) => '    $line',
+          )}
+
+'mcts' engine config options:
+
+${mctsParser(defaultConfig).usage.splitMapJoin(
             '\n',
             onNonMatch: (line) => '    $line',
           )}
@@ -486,6 +498,7 @@ ${nthEngineParser().usage.splitMapJoin(
 
     final configParser = ArgParser(allowTrailingOptions: false);
     configParser.addCommand('xmm', xmmParser(defaultConfig));
+    configParser.addCommand('mcts', mctsParser(defaultConfig));
     configParser.addCommand('random', randomEngineParser());
     configParser.addCommand('nth', nthEngineParser());
 
@@ -496,7 +509,7 @@ ${nthEngineParser().usage.splitMapJoin(
           if (args.first.startsWith('-')) {
             throw 'Error: Specify an engine before engine flags: "$args"';
           }
-          if (!{'xmm', 'random', 'nth'}.contains(args.first)) {
+          if (!{'xmm', 'mcts', 'random', 'nth'}.contains(args.first)) {
             throw 'Error: Invalid engine name: "${args.first}"';
           }
           try {
@@ -553,6 +566,26 @@ ${nthEngineParser().usage.splitMapJoin(
             help: 'check == on transposition entries to avoid hash collisions')
         ..addOption('debug-setting', hide: true);
 
+  ArgParser mctsParser(ExpectiminimaxConfig defaults) =>
+      ArgParser(allowTrailingOptions: false)
+        ..addOption('max-depth',
+            abbr: 'd',
+            // TODO: handle this default without ExpectiminimaxConfig
+            defaultsTo: defaults.maxDepth.toString(),
+            help: 'max depth to search')
+        ..addOption('max-time',
+            abbr: 't',
+            // TODO: handle this default without ExpectiminimaxConfig
+            defaultsTo: defaults.maxTime.inMilliseconds.toString(),
+            help: 'max time to search, in milliseconds')
+        ..addOption('max-playouts',
+            abbr: 'p',
+            defaultsTo: '1000000',
+            help: 'Max playouts before aborting search')
+        ..addOption('c-uct',
+            defaultsTo: '1.41',
+            help: 'Constant parameter "c" for UCT selection');
+
   ArgParser randomEngineParser() => ArgParser(allowTrailingOptions: false)
     ..addOption('seed', abbr: 's', help: 'seed for random move selection.');
 
@@ -568,6 +601,8 @@ ${nthEngineParser().usage.splitMapJoin(
     switch (results.command?.name) {
       case 'xmm':
         return getXmmConfig(results.command!);
+      case 'mcts':
+        return getMctsConfig(results.command!);
       case 'random':
         return getRandomEngineConfig(results.command!);
       case 'nth':
@@ -588,6 +623,15 @@ ${nthEngineParser().usage.splitMapJoin(
       strictTranspositions: results['strict-transpositions'],
       // ignore: deprecated_member_use_from_same_package
       debugSetting: results['debug-setting'],
+    );
+  }
+
+  MctsConfig getMctsConfig(ArgResults results) {
+    return MctsConfig(
+      maxDepth: int.parse(results['max-depth']),
+      maxTime: Duration(milliseconds: int.parse(results['max-time'])),
+      maxPlayouts: int.parse(results['max-playouts']),
+      cUct: double.parse(results['c-uct']),
     );
   }
 
