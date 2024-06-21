@@ -18,7 +18,7 @@ fun!
 - killer move heuristic
 - \*-minimax (alpha beta pruning on CHANCE nodes)
 - star2-style probing pass on CHANCE descendents
-- MCTS with UCT-based node selection
+- MCTS with UCT-based and/or pUCT-based node selection
 - SPRT testing support
 
 ## TODO
@@ -417,9 +417,9 @@ dart bin/my_game.dart perft --help
 You can configure the xmm engine settings for your game in many of the
 subcommands by using the following settings:
 
-- `--max-depth' or `-d`: set maximum search depth. Prefer high and rely on
+- `--max-depth` or `-d`: set maximum search depth. Prefer high and rely on
   timeouts to stop the search, unless you have disabled iterative deepening.
-- `--max-time' or `-t`: set maximum search time in ms. If you have disabled
+- `--max-time` or `-t`: set maximum search time in ms. If you have disabled
   iterative deepening, prefer a very large number/no timeout.
 - `--no-iterative-deepening`: Disable "iterative deepening" in favor of a fixed
   depth search. With iterative deepening enabled, the engine searches to depth
@@ -442,6 +442,46 @@ subcommands by using the following settings:
   equal hash codes represent the same game. This is not truly correct behavior,
   and it is fixable with `--strict-transpositions`. However, it consumes much
   more memory when enabled.
+
+### MCTS engine config
+
+There are important configuration options exposed for monte-carlo tree search as
+well.
+
+- `--max-depth` or `-d`: set maximum playout depth. If the scoring function is
+  unreliable without looking many moves ahead, set this high. Otherwise, a lower
+  depth may reduce the amount of noise in each playout and improve the engine.
+- `--max-time` or `-t`: set maximum search time in ms.
+
+#### UCT vs pUCT
+
+The following settings determine whether the engine will perform a UCT-style
+search (upper confidence applied to trees), which uses no priors to assume the
+strength of a move, or, whether to perform a pUCT-style search, which utilizes
+priors.
+
+To perform a pure UCT style search, set `--c-puct` to zero, or else a hybrid
+approach will be used.
+
+- `--c-uct`: Set the constant parameter `c` in UCT-style searching. The
+  theoretically this parameter should equal root 2. A higher number will prefer
+  a broader search, and narrower number will focus more on simulating previously
+  effective moves.
+
+AlphaZero and Leela Chess Zero use pUCT search. To perform a pure pUCT style
+search, set `--c-uct` to zero and `--expand-depth` to 1, or else a hybrid
+approach will be used.
+
+In a pUCT search, only a few nodes are added to the tree per "playout." However,
+playouts are rarely completed, and instead a scoring function is used (ideally,
+a neural network) to predict the chance of a player winning the game.
+
+- `--c-puct`: Set the constant parameter `cPUCT` for pUCT-style searching. A
+  higher number will rely more on priors in node selection when visit count is
+  low, and will weight novel exploration more as visit count increases.
+- `--expand-depth` When a leaf is selected, how deep to traverse for adding new
+  nodes. Traditional pUCT searching uses an expand depth of 1, however, this can
+  amount to a short-sighted search when the scoring function is short sighted.
 
 ## Performance considerations
 

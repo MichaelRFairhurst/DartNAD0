@@ -69,11 +69,16 @@ class Chance<G> {
 
   /// Supply a number between 0.0 and 1.0, to pick an outcome, weighted by
   /// the probability of that outcome.
-  Possibility<G> pick(double select) {
-    for (final ro in possibilities) {
+  Possibility<G> pick(double select) => possibilities[pickIndex(select)];
+
+  /// Supply a number between 0.0 and 1.0, to pick an index for an outcome,
+  /// weighted by the probability of that outcome.
+  int pickIndex(double select) {
+    for (int i = 0; i < possibilities.length; ++i) {
+      final ro = possibilities[i];
       select -= ro.probability;
       if (select < 0) {
-        return ro;
+        return i;
       }
     }
 

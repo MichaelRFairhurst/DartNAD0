@@ -582,9 +582,16 @@ ${nthEngineParser().usage.splitMapJoin(
             abbr: 'p',
             defaultsTo: '1000000',
             help: 'Max playouts before aborting search')
+        ..addOption('expand-depth',
+            abbr: 'e',
+            defaultsTo: '1000000',
+            help: 'Max new deeper nodes to add to tree during expand phase')
         ..addOption('c-uct',
             defaultsTo: '1.41',
-            help: 'Constant parameter "c" for UCT selection');
+            help: 'Constant parameter "c" for UCT selection')
+        ..addOption('c-puct',
+            defaultsTo: '1.41',
+            help: 'Constant parameter "cpUCT" for pUCT selection');
 
   ArgParser randomEngineParser() => ArgParser(allowTrailingOptions: false)
     ..addOption('seed', abbr: 's', help: 'seed for random move selection.');
@@ -631,7 +638,9 @@ ${nthEngineParser().usage.splitMapJoin(
       maxDepth: int.parse(results['max-depth']),
       maxTime: Duration(milliseconds: int.parse(results['max-time'])),
       maxPlayouts: int.parse(results['max-playouts']),
+      expandDepth: int.parse(results['expand-depth']),
       cUct: double.parse(results['c-uct']),
+      cPuct: double.parse(results['c-puct']),
     );
   }
 

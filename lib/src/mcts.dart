@@ -11,15 +11,56 @@ class MctsConfig implements EngineConfig {
   MctsConfig({
     required this.maxDepth,
     required this.maxPlayouts,
+    required this.expandDepth,
     required this.maxTime,
     this.cUct = 1.41,
+    this.cPuct = 2.0,
   });
 
+  /// Constant factor c for UCT formula.
+  ///
+  /// To perform a UCT search, ensure CpUCT is zero, otherwise a blend of both
+  /// approaches will be used.
+  ///
+  /// Theoretically should equal sqrt(2), though higher values will explore more
+  /// widely, lower values will explore more narrowly, which can improve
+  /// results.
   final double cUct;
+
+  /// Constant factor CpUCT for pUCT formula.
+  ///
+  /// To perform a pUCT search, ensure cUCT is zero, otherwise a blend of both
+  /// approaches will be used.
+  ///
+  /// Also, to use pUCT as used by AlphaZero/lc0/etc, set [expandDepth] to 1.
+  ///
+  /// lc0 and alphaZero chance CpUCT over time, so this setting is subject to
+  /// change to match their approach.
+  final double cPuct;
+
+  /// Max game branches to traverse before scoring the current node.
+  ///
+  /// Exploring deeper is beneficial when the game's scoring function is less
+  /// predictive, however, this reduces the breadth of search which makes
+  /// blunders more likely.
   final int maxDepth;
+
+  /// Max number of playouts to perform before stopping search.
+  ///
+  /// Typically this number should be extremely high, and [maxTime] should be
+  /// used to terminate search instead.
   final int maxPlayouts;
+
+  /// How many nodes to add to the tree when performing an expansion.
+  ///
+  /// For a traditional UCT-style search, set this equal to [maxDepth]. For a
+  /// traditional pUCT-style search, set this to 1.
+  final int expandDepth;
+
+  /// Duration before cutting off search.
   final Duration maxTime;
 
+  @override
   Mcts<G> buildEngine<G extends Game<G>>() => Mcts<G>(Random(), this);
 }
 
@@ -29,7 +70,7 @@ class Mcts<G extends Game<G>> implements Engine<G> {
   final SearchStats stats;
   late DateTime timeout;
 
-  _MctsNode<G, dynamic>? lastTree;
+  MctsNode<G, dynamic>? lastTree;
 
   Mcts(this.random, this.config) : stats = SearchStats(config.maxDepth);
 
@@ -43,14 +84,14 @@ class Mcts<G extends Game<G>> implements Engine<G> {
     timeout = start.add(config.maxTime);
 
     final cached = lastTree?.findChildGame(game, 2);
-    final tree = cached ?? _MctsMoveNode<G>(game, 0);
+    final tree = cached ?? MctsMoveNode<G>(game, 0);
     lastTree = tree;
     for (int i = 0; true; ++i) {
       if (!DateTime.now().isBefore(timeout) || i == config.maxPlayouts) {
         break;
       }
 
-	  _simulate(tree, 0);
+      expand(tree, config.maxDepth, config.expandDepth);
     }
 
     final bestIdx =
@@ -58,44 +99,52 @@ class Mcts<G extends Game<G>> implements Engine<G> {
     return moves[bestIdx];
   }
 
-  bool _simulate(_MctsNode<G, dynamic> tree, int depth) {
-    if (tree.isTerminal || !DateTime.now().isBefore(timeout)) {
-      return tree.backpropagate(tree.game.score > 0);
+  double expand(MctsNode<G, dynamic> tree, int depth, int expandDepth) {
+    if (depth <= 0 ||
+        expandDepth <= 0 ||
+        tree.isTerminal ||
+        !DateTime.now().isBefore(timeout)) {
+      return tree.backpropagate(tree.score);
     }
 
-    if (tree is _MctsRandomNode<G>) {
+    tree.simulations++;
+    if (tree is MctsRandomNode<G>) {
       final pIdx = tree.chance.pickIndex(random.nextDouble());
       final next = tree.getChild(pIdx);
-      return tree.backpropagate(_simulate(next, depth + 1));
+      return tree.backpropagate(expand(next, depth - 1, expandDepth));
     }
 
-    if (tree is _MctsMoveNode<G>) {
-      if (depth >= config.maxDepth) {
-        return tree.backpropagate(tree.game.score > 0);
-      } else {
-        final child = tree.select(random, config);
-        return tree.backpropagate(_simulate(child, depth + 1));
+    if (tree is MctsMoveNode<G>) {
+      final child = tree.select(random, config);
+      final newExpandDepth =
+          child.simulations == 0 ? expandDepth - 1 : expandDepth;
+
+      if (newExpandDepth <= 0) {
+        return tree.backpropagate(child.score);
       }
+
+      return tree.backpropagate(expand(child, depth - 1, newExpandDepth));
     }
 
     throw 'unreachable';
   }
 }
 
-abstract class _MctsNode<G extends Game<G>, E> {
-  int wins = 0;
+abstract class MctsNode<G extends Game<G>, E> {
   int simulations = 0;
   double q = 0;
   final G game;
-  _MctsNode<G, dynamic>? child;
-  _MctsNode<G, dynamic>? sibling;
-  int edgeIdx;
-  _MctsNode(this.game, this.edgeIdx);
+  MctsNode<G, dynamic>? child;
+  MctsNode<G, dynamic>? sibling;
+  final int edgeIdx;
+  MctsNode(this.game, this.edgeIdx);
 
   double? _score;
-  double get score => _score ??= game.score;
+  double get score => _score ??= computeScore();
 
-  _MctsNode<G, dynamic> getChild(int edgeIdx) {
+  double computeScore() => game.score;
+
+  MctsNode<G, dynamic> getChild(int edgeIdx) {
     final edge = edges[edgeIdx];
     if (child == null) {
       return child = walk(edge, edgeIdx);
@@ -117,7 +166,14 @@ abstract class _MctsNode<G extends Game<G>, E> {
 
   static final _edgeScoreCache = <double>[];
 
-  _MctsNode<G, dynamic> select(Random random, MctsConfig config) {
+  MctsNode<G, dynamic> select(Random random, MctsConfig config) {
+    if (config.cPuct != 0) {
+      return getChild(bestIdxBy<num>(
+          edges.length,
+          (i) => getChild(i)
+              .scoreForSelect(simulations, config.cUct, config.cPuct))!);
+    }
+
     if (child == null) {
       return getChild(random.nextInt(edges.length));
     }
@@ -133,7 +189,8 @@ abstract class _MctsNode<G extends Game<G>, E> {
 
     var node = child;
     while (node != null) {
-      _edgeScoreCache[node.edgeIdx] = node.uct(simulations, config.cUct);
+      _edgeScoreCache[node.edgeIdx] =
+          node.scoreForSelect(simulations, config.cUct, config.cPuct);
       node = node.sibling;
     }
 
@@ -142,19 +199,17 @@ abstract class _MctsNode<G extends Game<G>, E> {
   }
 
   List<E> get edges;
-  _MctsNode<G, dynamic> walk(E edge, int edgeIdx);
+  MctsNode<G, dynamic> walk(E edge, int edgeIdx);
 
   bool get isTerminal => edges.isEmpty;
 
-  bool backpropagate(bool winner) {
-    simulations++;
-    if (game.isMaxing == winner) {
-      wins++;
-    }
-    return winner;
+  double backpropagate(double score) {
+    final factor = game.isMaxing ? 1.0 : -1.0;
+    q = q * ((simulations - 1) / simulations) + factor * score / simulations;
+    return score;
   }
 
-  _MctsNode<G, dynamic>? findChildGame(G game, int searchDepth) {
+  MctsNode<G, dynamic>? findChildGame(G game, int searchDepth) {
     if (this.game == game) {
       return this;
     }
@@ -177,37 +232,62 @@ abstract class _MctsNode<G extends Game<G>, E> {
     return null;
   }
 
-  double uct(int parentSimulations, double cUct) {
+  /// The additional value we assign this node, in addition to q, to account for
+  /// uncertainty and encourage it to be searched, specifically for UCT.
+  double _uctValue(int parentSimulations, double cUct) {
+    if (cUct == 0) {
+      // Caution, 0 * double.infinity == NaN. In this case we do want zero.
+      return 0;
+    }
+
     if (simulations == 0) {
       return double.infinity;
     }
-    return wins / simulations +
-        cUct * sqrt(log(parentSimulations) / simulations);
+
+    return cUct * sqrt(log(parentSimulations) / simulations);
+  }
+
+  /// The additional value we assign this node, in addition to q, to account for
+  /// uncertainty and encourage it to be searched, specifically for pUCT.
+  double _pUctValue(int parentSimulations, double cPUct) {
+    return cPUct * (score + 1.0) * sqrt(parentSimulations) / (simulations + 1);
+  }
+
+  /// Performs a blend of UCT scoring and pUCT scoring based on scaling factors
+  /// c for each.
+  double scoreForSelect(int parentSimulations, double cUct, double cPUct) {
+    final uctVal = _uctValue(parentSimulations, cUct);
+    final pUctVal = _pUctValue(parentSimulations, cPUct);
+    return (q + 1.0) + uctVal + pUctVal;
   }
 }
 
-class _MctsMoveNode<G extends Game<G>> extends _MctsNode<G, Move<G>> {
+class MctsMoveNode<G extends Game<G>> extends MctsNode<G, Move<G>> {
   @override
   final List<Move<G>> edges;
 
-  _MctsMoveNode(super.game, super.edgeIdx) : edges = game.getMoves();
+  MctsMoveNode(super.game, super.edgeIdx) : edges = game.getMoves();
 
   @override
-  _MctsNode<G, dynamic> walk(Move<G> edge, int edgeIdx) {
-    return _MctsRandomNode(game, edgeIdx, edge.perform(game));
+  MctsNode<G, dynamic> walk(Move<G> edge, int edgeIdx) {
+    return MctsRandomNode(game, edgeIdx, edge.perform(game));
   }
 }
 
-class _MctsRandomNode<G extends Game<G>> extends _MctsNode<G, Possibility<G>> {
+class MctsRandomNode<G extends Game<G>> extends MctsNode<G, Possibility<G>> {
   final Chance<G> chance;
 
-  _MctsRandomNode(super.game, super.edgeIdx, this.chance);
+  @override
+  // TODO: should this traverse into children so they can also cache this?
+  double computeScore() => chance.expectedValue((g) => g.score);
+
+  MctsRandomNode(super.game, super.edgeIdx, this.chance);
 
   @override
   List<Possibility<G>> get edges => chance.possibilities;
 
   @override
-  _MctsNode<G, dynamic> walk(Possibility<G> edge, int edgeIdx) {
-    return _MctsMoveNode(edge.outcome, edgeIdx);
+  MctsNode<G, dynamic> walk(Possibility<G> edge, int edgeIdx) {
+    return MctsMoveNode(edge.outcome, edgeIdx);
   }
 }
