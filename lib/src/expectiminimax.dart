@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:expectiminimax/src/config.dart';
+import 'package:expectiminimax/src/engine.dart';
 import 'package:expectiminimax/src/game.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/stats.dart';
 import 'package:expectiminimax/src/transposition.dart';
 import 'package:expectiminimax/src/util.dart';
 
-class Expectiminimax<G extends Game<G>> {
+class Expectiminimax<G extends Game<G>> implements Engine<G> {
   Expectiminimax({
     required ExpectiminimaxConfig config,
     TranspositionTable<G>? transpositionTable,
@@ -57,6 +58,10 @@ class Expectiminimax<G extends Game<G>> {
   /// Used by negamax algorithm to know when minning/maxing player turns flip,
   /// so we can compute `-score(child, -beta, -alpha)`.
   var _isMaxing = true;
+
+  void clearCache() {
+    transpositionTable.clear();
+  }
 
   Move<G> chooseBest(List<Move<G>> moves, G game) {
     final start = DateTime.now();
