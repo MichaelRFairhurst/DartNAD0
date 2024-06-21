@@ -599,8 +599,10 @@ ${nthEngineParser().usage.splitMapJoin(
   ArgParser nthEngineParser() => ArgParser(allowTrailingOptions: false)
     ..addFlag('from-end',
         abbr: 'e', help: 'select nth move from the end instead of the start')
-    ..addOption('n', abbr: 'n',
-        defaultsTo: '0', help: '0-based index for which move to select');
+    ..addOption('n',
+        abbr: 'n',
+        defaultsTo: '0',
+        help: '0-based index for which move to select');
 
   EngineConfig getPrimaryConfig() => getConfigFromResults(argResults!);
 
