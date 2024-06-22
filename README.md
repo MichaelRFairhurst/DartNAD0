@@ -365,16 +365,22 @@ A simple game loop between two AIs will look like the following:
 
 ## Command line tools
 
-Specify a starting game state to easily make a command line tool for playing and
-benchmarking your game!
+Specify a starting game state and default engine configuration settings to
+easily make a command line tool for playing and benchmarking your game!
 
 ```dart
 // bin/my_game.dart
 void main(List<String> args) {
   final cli = CliTool(
     startingGame: DiceGame(p1Score: 0, p2Score: 0),
-	maxDepth: 20,
-	maxTime: const Duration(seconds: 1),
+	defaultXmmConfig(
+	  maxDepth: 20,
+	  maxTime: const Duration(seconds: 1),
+	),
+	defaultMctsConfig(
+	  maxDepth: 80,
+	  maxTime: const Duration(seconds: 1),
+	)
   );
 
   return cli.run(args);
