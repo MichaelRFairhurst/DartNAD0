@@ -15,9 +15,14 @@ import 'package:expectiminimax/src/perft.dart';
 
 class CliTools<G extends Game<G>> {
   final G startingGame;
-  final ExpectiminimaxConfig defaultConfig;
+  final ExpectiminimaxConfig defaultXmmConfig;
+  final MctsConfig defaultMctsConfig;
 
-  CliTools({required this.startingGame, required this.defaultConfig}) {}
+  CliTools({
+    required this.startingGame,
+    required this.defaultXmmConfig,
+    required this.defaultMctsConfig,
+  });
 
   void run(List<String> args) {
     // Convert args to a mutable list
@@ -44,11 +49,15 @@ class CliTools<G extends Game<G>> {
         'Pre-built CLI tools to run expectiminimax on custom games')
       ..addCommand(PerftCommand(startingGame))
       // TODO: play two AIs against each other
-      ..addCommand(WatchGame(startingGame, defaultConfig, []))
+      ..addCommand(
+          WatchGame(startingGame, defaultXmmConfig, defaultMctsConfig, []))
       // TODO: Distinguish SingleConfigCommand from MultiConfigCommand
-      ..addCommand(Benchmark(startingGame, defaultConfig, []))
-      ..addCommand(Compare(startingGame, defaultConfig, configs))
-      ..addCommand(Rank(startingGame, defaultConfig, configs));
+      ..addCommand(
+          Benchmark(startingGame, defaultXmmConfig, defaultMctsConfig, []))
+      ..addCommand(
+          Compare(startingGame, defaultXmmConfig, defaultMctsConfig, configs))
+      ..addCommand(
+          Rank(startingGame, defaultXmmConfig, defaultMctsConfig, configs));
 
     commandRunner.run(sections[0]);
   }
@@ -74,9 +83,9 @@ class WatchGame<G extends Game<G>> extends ParseConfigCommand {
 
   final G startingGame;
 
-  WatchGame(this.startingGame, ExpectiminimaxConfig defaultConfig,
-      List<List<String>> configSpecs)
-      : super(defaultConfig, configSpecs) {
+  WatchGame(this.startingGame, ExpectiminimaxConfig defaultXmmConfig,
+      MctsConfig defaultMctsConfig, List<List<String>> configSpecs)
+      : super(defaultXmmConfig, defaultMctsConfig, configSpecs) {
     argParser.addOption('seed',
         abbr: 's', help: 'Random number generator seed.');
     argParser.addOption('print-stats',
@@ -132,9 +141,9 @@ class Benchmark<G extends Game<G>> extends ParseConfigCommand {
 
   final G startingGame;
 
-  Benchmark(this.startingGame, ExpectiminimaxConfig defaultConfig,
-      List<List<String>> configSpecs)
-      : super(defaultConfig, configSpecs) {
+  Benchmark(this.startingGame, ExpectiminimaxConfig defaultXmmConfig,
+      MctsConfig defaultMctsConfig, List<List<String>> configSpecs)
+      : super(defaultXmmConfig, defaultMctsConfig, configSpecs) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '20', help: 'How many games to play');
     argParser.addOption('seed',
@@ -180,9 +189,9 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
 
   final G startingGame;
 
-  Compare(this.startingGame, ExpectiminimaxConfig defaultConfig,
-      List<List<String>> configSpecs)
-      : super(defaultConfig, configSpecs) {
+  Compare(this.startingGame, ExpectiminimaxConfig defaultXmmConfig,
+      MctsConfig defaultMctsConfig, List<List<String>> configSpecs)
+      : super(defaultXmmConfig, defaultMctsConfig, configSpecs) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '10', help: 'How many games to play');
     argParser.addOption('seed',
@@ -257,9 +266,9 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
 
   final G startingGame;
 
-  Rank(this.startingGame, ExpectiminimaxConfig defaultConfig,
-      List<List<String>> configSpecs)
-      : super(defaultConfig, configSpecs) {
+  Rank(this.startingGame, ExpectiminimaxConfig defaultXmmConfig,
+      MctsConfig defaultMctsConfig, List<List<String>> configSpecs)
+      : super(defaultXmmConfig, defaultMctsConfig, configSpecs) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '10', help: 'Maximum number of games to play');
     argParser.addOption('seed',
@@ -428,11 +437,13 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
 
 abstract class ParseConfigCommand extends Command {
   List<List<String>> configSpecs;
-  final ExpectiminimaxConfig defaultConfig;
+  final ExpectiminimaxConfig defaultXmmConfig;
+  final MctsConfig defaultMctsConfig;
 
-  ParseConfigCommand(this.defaultConfig, this.configSpecs) {
-    argParser.addCommand('xmm', xmmParser(defaultConfig));
-    argParser.addCommand('mcts', mctsParser(defaultConfig));
+  ParseConfigCommand(
+      this.defaultXmmConfig, this.defaultMctsConfig, this.configSpecs) {
+    argParser.addCommand('xmm', xmmParser(defaultXmmConfig));
+    argParser.addCommand('mcts', mctsParser(defaultMctsConfig));
     argParser.addCommand('random', randomEngineParser());
     argParser.addCommand('nth', nthEngineParser());
   }
@@ -460,14 +471,14 @@ Some commands can accept multiple engines. These engines may be separated with '
 
 'xmm' engine config options:
 
-${xmmParser(defaultConfig).usage.splitMapJoin(
+${xmmParser(defaultXmmConfig).usage.splitMapJoin(
             '\n',
             onNonMatch: (line) => '    $line',
           )}
 
 'mcts' engine config options:
 
-${mctsParser(defaultConfig).usage.splitMapJoin(
+${mctsParser(defaultMctsConfig).usage.splitMapJoin(
             '\n',
             onNonMatch: (line) => '    $line',
           )}
@@ -497,8 +508,8 @@ ${nthEngineParser().usage.splitMapJoin(
     }
 
     final configParser = ArgParser(allowTrailingOptions: false);
-    configParser.addCommand('xmm', xmmParser(defaultConfig));
-    configParser.addCommand('mcts', mctsParser(defaultConfig));
+    configParser.addCommand('xmm', xmmParser(defaultXmmConfig));
+    configParser.addCommand('mcts', mctsParser(defaultMctsConfig));
     configParser.addCommand('random', randomEngineParser());
     configParser.addCommand('nth', nthEngineParser());
 
@@ -566,31 +577,29 @@ ${nthEngineParser().usage.splitMapJoin(
             help: 'check == on transposition entries to avoid hash collisions')
         ..addOption('debug-setting', hide: true);
 
-  ArgParser mctsParser(ExpectiminimaxConfig defaults) =>
+  ArgParser mctsParser(MctsConfig defaults) =>
       ArgParser(allowTrailingOptions: false)
         ..addOption('max-depth',
             abbr: 'd',
-            // TODO: handle this default without ExpectiminimaxConfig
             defaultsTo: defaults.maxDepth.toString(),
             help: 'max depth to search')
         ..addOption('max-time',
             abbr: 't',
-            // TODO: handle this default without ExpectiminimaxConfig
             defaultsTo: defaults.maxTime.inMilliseconds.toString(),
             help: 'max time to search, in milliseconds')
         ..addOption('max-playouts',
             abbr: 'p',
-            defaultsTo: '1000000',
+            defaultsTo: defaults.maxPlayouts.toString(),
             help: 'Max playouts before aborting search')
         ..addOption('expand-depth',
             abbr: 'e',
-            defaultsTo: '1000000',
+            defaultsTo: defaults.expandDepth.toString(),
             help: 'Max new deeper nodes to add to tree during expand phase')
         ..addOption('c-uct',
-            defaultsTo: '1.41',
+            defaultsTo: defaults.cUct.toString(),
             help: 'Constant parameter "c" for UCT selection')
         ..addOption('c-puct',
-            defaultsTo: '1.41',
+            defaultsTo: defaults.cPuct.toString(),
             help: 'Constant parameter "cpUCT" for pUCT selection');
 
   ArgParser randomEngineParser() => ArgParser(allowTrailingOptions: false)

@@ -10,8 +10,8 @@ import 'package:expectiminimax/src/util.dart';
 class MctsConfig implements EngineConfig {
   MctsConfig({
     required this.maxDepth,
-    required this.maxPlayouts,
-    required this.expandDepth,
+    this.maxPlayouts = 1000000,
+    this.expandDepth = 1000000,
     required this.maxTime,
     this.cUct = 1.41,
     this.cPuct = 2.0,

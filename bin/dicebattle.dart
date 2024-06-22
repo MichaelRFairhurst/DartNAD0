@@ -3,6 +3,7 @@ import 'package:expectiminimax/src/cli.dart';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/dice.dart';
 import 'package:expectiminimax/src/game.dart';
+import 'package:expectiminimax/src/mcts.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/roll.dart';
 
@@ -253,7 +254,11 @@ class Attack implements Move<DiceBattle> {
 
 void main(List<String> args) {
   CliTools<DiceBattle>(
-    defaultConfig: ExpectiminimaxConfig(
+    defaultXmmConfig: ExpectiminimaxConfig(
+      maxDepth: 50,
+      maxTime: Duration(milliseconds: 25),
+    ),
+    defaultMctsConfig: MctsConfig(
       maxDepth: 50,
       maxTime: Duration(milliseconds: 25),
     ),

@@ -5,6 +5,7 @@ import 'package:expectiminimax/src/cli.dart';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/dice.dart';
 import 'package:expectiminimax/src/game.dart';
+import 'package:expectiminimax/src/mcts.dart';
 import 'package:expectiminimax/src/move.dart';
 import 'package:expectiminimax/src/roll.dart';
 
@@ -574,9 +575,14 @@ class AbandonTurn implements Move<Backgammon> {
 
 void main(List<String> args) {
   CliTools<Backgammon>(
-    defaultConfig: ExpectiminimaxConfig(
+    defaultXmmConfig: ExpectiminimaxConfig(
       maxDepth: 40,
       maxTime: Duration(milliseconds: 25),
+    ),
+    defaultMctsConfig: MctsConfig(
+      maxDepth: 40,
+      maxTime: Duration(milliseconds: 25),
+      cUct: 0.8,
     ),
     startingGame: Backgammon(
       points: startingBoard,
