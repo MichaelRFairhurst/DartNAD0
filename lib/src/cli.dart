@@ -273,6 +273,8 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
         abbr: 'c', defaultsTo: '10', help: 'Maximum number of games to play');
     argParser.addOption('seed',
         abbr: 's', help: 'Random number generator seed.');
+    argParser.addOption('threads',
+        defaultsTo: '8', help: 'Number of games to run concurrently.');
     argParser.addFlag('sprt',
         defaultsTo: false,
         help: 'Run SPRT (sequential probability ratio test), which tests until'
@@ -356,6 +358,7 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
     final count = int.parse(argResults!['count']);
+    final threadCount = int.parse(argResults!['threads']);
 
     final random = Random(seed);
     final algs = configs.map((c) => c.buildEngine<G>()).toList();
@@ -369,7 +372,8 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
     final esc = String.fromCharCode(27);
     final clearStr = '$esc[1A$esc[2K' * (configs.length + 2);
 
-    final threads = List.generate(8, (i) => startThread(algs, random, refresh));
+    final threads =
+        List.generate(threadCount, (i) => startThread(algs, random, refresh));
 
     var startedGames = 0;
     var game = 0;
