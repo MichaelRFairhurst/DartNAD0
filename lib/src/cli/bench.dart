@@ -5,7 +5,7 @@ import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/mcts.dart';
 import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/game.dart';
-import 'package:dartnad0/src/time_control.dart';
+import 'package:dartnad0/src/time/time_control.dart';
 
 class Benchmark<G extends Game<G>> extends ParseConfigCommand {
   final name = 'bench';

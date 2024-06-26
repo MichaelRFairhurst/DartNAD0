@@ -1,7 +1,7 @@
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/stats.dart';
-import 'package:dartnad0/src/time_control.dart';
+import 'package:dartnad0/src/time/time_control.dart';
 
 /// An engine is an algorithm, such as expectimiminax, that can choose what it
 /// considers the best move for a game position.

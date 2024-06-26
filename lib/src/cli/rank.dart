@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:dartnad0/src/cli/parse_config_command.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/mcts.dart';
-import 'package:dartnad0/src/time_control.dart';
+import 'package:dartnad0/src/time/time_control.dart';
 import 'package:thread/thread.dart';
 import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/elo.dart';

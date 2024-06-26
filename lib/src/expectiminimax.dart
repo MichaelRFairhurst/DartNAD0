@@ -5,7 +5,7 @@ import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/stats.dart';
-import 'package:dartnad0/src/time_control.dart';
+import 'package:dartnad0/src/time/time_control.dart';
 import 'package:dartnad0/src/transposition.dart';
 import 'package:dartnad0/src/util.dart';
 
