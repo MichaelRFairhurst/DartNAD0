@@ -32,6 +32,10 @@ abstract class Game<G extends Game<G>> {
   /// pursuing a score of -1.0.
   bool get isMaxing;
 
+  /// Required to serve the engine over http with the `serve` command.
+  String encode() => throw UnimplementedError(
+      'Implement encode() to serve this game engine over http.');
+
   /// The current moves available to the current player.
   ///
   /// Must return an empty list when the game has been won or lost. If this
