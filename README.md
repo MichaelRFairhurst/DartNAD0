@@ -14,7 +14,9 @@ Note that randomness severely limits the effectiveness of alpha-beta pruning, a
 critical part of modern chess engines. If your game includes lots of randomness,
 you can experiment with the `xmm` (expectiminimax) engine, and compare it to the
 Monte-Carlo Tree Search engine (mcts) which supports both traditional UCT search
-as well as AlphaZero-style pUCT search.
+as well as AlphaZero-style pUCT search (but not AlphaZero-style reinforcement
+learning with neural networks, because remember, its **N**ot **A**lphaZero, it's
+**D**artNAD**0**).
 
 Mildy optimized, contributions welcome, use for your own fun!
 
