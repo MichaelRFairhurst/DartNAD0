@@ -1,11 +1,11 @@
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
-import 'package:expectiminimax/src/engine.dart';
-import 'package:expectiminimax/src/mcts.dart';
-import 'package:expectiminimax/src/other_engines/nth_engine.dart';
-import 'package:expectiminimax/src/other_engines/random_engine.dart';
-import 'package:expectiminimax/src/serve/served_engine_config.dart';
-import 'package:expectiminimax/src/config.dart';
+import 'package:dartnad0/src/engine.dart';
+import 'package:dartnad0/src/mcts.dart';
+import 'package:dartnad0/src/other_engines/nth_engine.dart';
+import 'package:dartnad0/src/other_engines/random_engine.dart';
+import 'package:dartnad0/src/serve/served_engine_config.dart';
+import 'package:dartnad0/src/config.dart';
 
 abstract class ParseConfigCommand extends Command {
   List<List<String>> configSpecs;

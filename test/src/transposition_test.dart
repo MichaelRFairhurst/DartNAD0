@@ -1,7 +1,7 @@
-import 'package:expectiminimax/src/expectiminimax.dart';
-import 'package:expectiminimax/src/game.dart';
-import 'package:expectiminimax/src/move.dart';
-import 'package:expectiminimax/src/transposition.dart';
+import 'package:dartnad0/src/expectiminimax.dart';
+import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/move.dart';
+import 'package:dartnad0/src/transposition.dart';
 import 'package:test/test.dart';
 
 void main() {

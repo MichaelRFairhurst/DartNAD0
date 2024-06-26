@@ -1,13 +1,22 @@
-# Dart expectiminimax implementation
+# DartNAD0
 
-A version of minimax that allows for random events, coded in dart.
+is a double recursive acronym for **D**artNAD0 **A**.I. for **R**andomized
+**T**abletop games is **N**ot **A**lphaZero, it's **D**artNAD **0**.
 
-Note that expectiminimax is often much slower than minimax as it cannot leverage
-alpha/beta pruning nearly as effectively. The alternative approach which can
-help in some games, MCTS, is also supported.
+DartNAD0 is a generalized, mildly optimized version of Expectiminimax and
+Monte-Carlo Tree Search designed to be configurable to work for a wide variety
+of games, including one with random events, written in Dart. All you have to do
+is implement the rules, and a basic scoring function, to have a game engine with
+a wide variety of configurable options, command line tools, and even a basic
+http server.
 
-Mildy optimized, and comes with prebuilt command line tools, use for your own
-fun!
+Note that randomness severely limits the effectiveness of alpha-beta pruning, a
+critical part of modern chess engines. If your game includes lots of randomness,
+you can experiment with the `xmm` (expectiminimax) engine, and compare it to the
+Monte-Carlo Tree Search engine (mcts) which supports both traditional UCT search
+as well as AlphaZero-style pUCT search.
+
+Mildy optimized, contributions welcome, use for your own fun!
 
 ## Current features
 

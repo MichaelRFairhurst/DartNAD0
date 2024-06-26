@@ -1,13 +1,13 @@
 import 'dart:math';
 import 'package:collection/collection.dart';
-import 'package:expectiminimax/src/chance.dart';
-import 'package:expectiminimax/src/cli/cli_tools.dart';
-import 'package:expectiminimax/src/config.dart';
-import 'package:expectiminimax/src/dice.dart';
-import 'package:expectiminimax/src/game.dart';
-import 'package:expectiminimax/src/mcts.dart';
-import 'package:expectiminimax/src/move.dart';
-import 'package:expectiminimax/src/roll.dart';
+import 'package:dartnad0/src/chance.dart';
+import 'package:dartnad0/src/cli/cli_tools.dart';
+import 'package:dartnad0/src/config.dart';
+import 'package:dartnad0/src/dice.dart';
+import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/mcts.dart';
+import 'package:dartnad0/src/move.dart';
+import 'package:dartnad0/src/roll.dart';
 
 final roll = Roll();
 

@@ -1,6 +1,6 @@
-import 'package:expectiminimax/src/engine.dart';
-import 'package:expectiminimax/src/expectiminimax.dart';
-import 'package:expectiminimax/src/game.dart';
+import 'package:dartnad0/src/engine.dart';
+import 'package:dartnad0/src/expectiminimax.dart';
+import 'package:dartnad0/src/game.dart';
 
 /// Config object for defining expectiminimax search parameters.
 class ExpectiminimaxConfig implements EngineConfig {

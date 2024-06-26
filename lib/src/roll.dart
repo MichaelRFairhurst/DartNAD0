@@ -1,7 +1,7 @@
 import 'dart:math';
 
-import 'package:expectiminimax/src/chance.dart';
-import 'package:expectiminimax/src/dice.dart';
+import 'package:dartnad0/src/chance.dart';
+import 'package:dartnad0/src/dice.dart';
 
 class Roll {
   final _cache = <Dice, Chance<int>>{};

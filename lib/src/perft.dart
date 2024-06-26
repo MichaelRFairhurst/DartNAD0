@@ -1,5 +1,5 @@
 import 'package:args/command_runner.dart';
-import 'package:expectiminimax/src/game.dart';
+import 'package:dartnad0/src/game.dart';
 
 /// A class to run perft to variable depth on the command line. See [CliTools]
 /// for more.

@@ -1,13 +1,13 @@
 import 'dart:math';
 
-import 'package:expectiminimax/src/cli/parse_config_command.dart';
-import 'package:expectiminimax/src/engine.dart';
-import 'package:expectiminimax/src/mcts.dart';
+import 'package:dartnad0/src/cli/parse_config_command.dart';
+import 'package:dartnad0/src/engine.dart';
+import 'package:dartnad0/src/mcts.dart';
 import 'package:thread/thread.dart';
-import 'package:expectiminimax/src/config.dart';
-import 'package:expectiminimax/src/elo.dart';
-import 'package:expectiminimax/src/game.dart';
-import 'package:expectiminimax/src/move.dart';
+import 'package:dartnad0/src/config.dart';
+import 'package:dartnad0/src/elo.dart';
+import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/move.dart';
 
 class Rank<G extends Game<G>> extends ParseConfigCommand {
   final name = 'rank';

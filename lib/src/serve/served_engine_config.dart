@@ -1,6 +1,6 @@
-import 'package:expectiminimax/src/engine.dart';
-import 'package:expectiminimax/src/game.dart';
-import 'package:expectiminimax/src/serve/serve_engine.dart';
+import 'package:dartnad0/src/engine.dart';
+import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/serve/serve_engine.dart';
 
 /// Configuration for the [ServedEngine] class.
 ///

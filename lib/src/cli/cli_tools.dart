@@ -1,13 +1,13 @@
 import 'package:args/command_runner.dart';
-import 'package:expectiminimax/src/cli/bench.dart';
-import 'package:expectiminimax/src/cli/compare.dart';
-import 'package:expectiminimax/src/cli/rank.dart';
-import 'package:expectiminimax/src/cli/watch.dart';
-import 'package:expectiminimax/src/mcts.dart';
-import 'package:expectiminimax/src/serve/serve_command.dart';
-import 'package:expectiminimax/src/config.dart';
-import 'package:expectiminimax/src/game.dart';
-import 'package:expectiminimax/src/perft.dart';
+import 'package:dartnad0/src/cli/bench.dart';
+import 'package:dartnad0/src/cli/compare.dart';
+import 'package:dartnad0/src/cli/rank.dart';
+import 'package:dartnad0/src/cli/watch.dart';
+import 'package:dartnad0/src/mcts.dart';
+import 'package:dartnad0/src/serve/serve_command.dart';
+import 'package:dartnad0/src/config.dart';
+import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/perft.dart';
 
 class CliTools<G extends Game<G>> {
   final G startingGame;

@@ -1,9 +1,9 @@
 import 'dart:math';
 
-import 'package:expectiminimax/src/chance.dart';
-import 'package:expectiminimax/src/game.dart';
-import 'package:expectiminimax/src/mcts.dart';
-import 'package:expectiminimax/src/move.dart';
+import 'package:dartnad0/src/chance.dart';
+import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/mcts.dart';
+import 'package:dartnad0/src/move.dart';
 import 'package:test/test.dart';
 
 void main() {

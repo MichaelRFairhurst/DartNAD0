@@ -1,9 +1,9 @@
 import 'dart:math';
 
-import 'package:expectiminimax/src/engine.dart';
-import 'package:expectiminimax/src/game.dart';
-import 'package:expectiminimax/src/move.dart';
-import 'package:expectiminimax/src/stats.dart';
+import 'package:dartnad0/src/engine.dart';
+import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/move.dart';
+import 'package:dartnad0/src/stats.dart';
 
 class RandomEngineConfig extends EngineConfig {
   final int? seed;

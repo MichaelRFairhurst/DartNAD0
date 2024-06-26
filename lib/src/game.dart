@@ -1,4 +1,4 @@
-import 'package:expectiminimax/src/move.dart';
+import 'package:dartnad0/src/move.dart';
 
 /// A class to represent how games are played, so that the expectiminimax or
 /// MCTS algorithms can play the defined game.

@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:expectiminimax/src/config.dart';
-import 'package:expectiminimax/src/engine.dart';
-import 'package:expectiminimax/src/game.dart';
-import 'package:expectiminimax/src/move.dart';
-import 'package:expectiminimax/src/stats.dart';
-import 'package:expectiminimax/src/transposition.dart';
-import 'package:expectiminimax/src/util.dart';
+import 'package:dartnad0/src/config.dart';
+import 'package:dartnad0/src/engine.dart';
+import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/move.dart';
+import 'package:dartnad0/src/stats.dart';
+import 'package:dartnad0/src/transposition.dart';
+import 'package:dartnad0/src/util.dart';
 
 class Expectiminimax<G extends Game<G>> implements Engine<G> {
   Expectiminimax({

@@ -1,10 +1,10 @@
 import 'dart:math';
 
-import 'package:expectiminimax/src/cli/parse_config_command.dart';
-import 'package:expectiminimax/src/engine.dart';
-import 'package:expectiminimax/src/mcts.dart';
-import 'package:expectiminimax/src/config.dart';
-import 'package:expectiminimax/src/game.dart';
+import 'package:dartnad0/src/cli/parse_config_command.dart';
+import 'package:dartnad0/src/engine.dart';
+import 'package:dartnad0/src/mcts.dart';
+import 'package:dartnad0/src/config.dart';
+import 'package:dartnad0/src/game.dart';
 
 class WatchGame<G extends Game<G>> extends ParseConfigCommand {
   final name = 'watch';
