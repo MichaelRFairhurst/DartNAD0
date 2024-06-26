@@ -68,6 +68,12 @@ class CliTools<G extends Game<G>> {
       ..addCommand(
           ServeCommand(decoder, defaultXmmConfig, defaultMctsConfig, configs));
 
+    // Workaround: parse command separately before running it. Command Runner
+    // does not like our usage of subcommands and crashes on run() if there's a
+    // parse error. This parse() call correctly throws.
+    commandRunner.argParser.parse(sections[0]);
+
+    // If we didn't throw, we can safely run.
     commandRunner.run(sections[0]);
   }
 }
