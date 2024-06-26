@@ -8,6 +8,7 @@ import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/mcts.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/roll.dart';
+import 'package:dartnad0/src/time/time_controller.dart';
 
 final roll = Roll();
 
@@ -575,7 +576,7 @@ class AbandonTurn implements Move<Backgammon> {
 
 void main(List<String> args) {
   CliTools<Backgammon>(
-    defaultMoveTimer: const Duration(milliseconds: 25),
+    timeController: const TimeController(Duration(milliseconds: 25)),
     defaultXmmConfig: ExpectiminimaxConfig(
       maxDepth: 40,
       maxTime: Duration(milliseconds: 25),

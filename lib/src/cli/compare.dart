@@ -5,7 +5,7 @@ import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/mcts.dart';
 import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/game.dart';
-import 'package:dartnad0/src/time/time_control.dart';
+import 'package:dartnad0/src/time/time_controller.dart';
 
 class Compare<G extends Game<G>> extends ParseConfigCommand {
   final name = 'compare';
@@ -13,11 +13,11 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
       ' by playing a series of exactly the same games';
 
   final G startingGame;
-  final Duration defaultMoveTimer;
+  final TimeController timeController;
 
   Compare(
       this.startingGame,
-      this.defaultMoveTimer,
+      this.timeController,
       ExpectiminimaxConfig defaultXmmConfig,
       MctsConfig defaultMctsConfig,
       List<List<String>> configSpecs)
@@ -56,10 +56,10 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
       while (game.score != 1.0 && game.score != -1.0) {
         final moves = game.getMoves();
         final move = await algs[0]
-            .chooseBest(moves, game, RelativeTimeControl(defaultMoveTimer));
+            .chooseBest(moves, game, timeController.makeMoveTimer());
         for (var c = 1; c < configs.length; ++c) {
           final vsMove = await algs[c]
-              .chooseBest(moves, game, RelativeTimeControl(defaultMoveTimer));
+              .chooseBest(moves, game, timeController.makeMoveTimer());
           if (compareChoices && move != vsMove) {
             print('Difference on turn $turn, game $i');
             print('- Baseline chose ${move.description}');

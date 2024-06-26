@@ -6,6 +6,7 @@ import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/mcts.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/roll.dart';
+import 'package:dartnad0/src/time/time_controller.dart';
 
 const winningScore = 20;
 const die = r1d6;
@@ -265,7 +266,7 @@ class Attack implements Move<DiceBattle> {
 
 void main(List<String> args) {
   CliTools<DiceBattle>(
-    defaultMoveTimer: Duration(milliseconds: 25),
+    timeController: TimeController(milliseconds: 25),
     defaultXmmConfig: ExpectiminimaxConfig(
       maxDepth: 50,
       maxTime: Duration(milliseconds: 25),

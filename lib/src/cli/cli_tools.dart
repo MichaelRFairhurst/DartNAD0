@@ -8,17 +8,18 @@ import 'package:dartnad0/src/serve/serve_command.dart';
 import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/perft.dart';
+import 'package:dartnad0/src/time/time_controller.dart';
 
 class CliTools<G extends Game<G>> {
   final G startingGame;
-  final Duration defaultMoveTimer;
+  final TimeController timeController;
   final G Function(String) decoder;
   final ExpectiminimaxConfig defaultXmmConfig;
   final MctsConfig defaultMctsConfig;
 
   CliTools({
     required this.startingGame,
-    required this.defaultMoveTimer,
+    required this.timeController,
     required this.defaultXmmConfig,
     required this.defaultMctsConfig,
     G Function(String)? decoder,
@@ -53,16 +54,16 @@ class CliTools<G extends Game<G>> {
       ..addCommand(PerftCommand(startingGame))
       // TODO: play two AIs against each other
       ..addCommand(
-          WatchGame(startingGame, defaultMoveTimer, defaultXmmConfig, defaultMctsConfig, []))
+          WatchGame(startingGame, timeController, defaultXmmConfig, defaultMctsConfig, []))
       // TODO: Distinguish SingleConfigCommand from MultiConfigCommand
       ..addCommand(
-          Benchmark(startingGame,  defaultMoveTimer,defaultXmmConfig, defaultMctsConfig, []))
+          Benchmark(startingGame,  timeController,defaultXmmConfig, defaultMctsConfig, []))
       ..addCommand(
-          Compare(startingGame, defaultMoveTimer, defaultXmmConfig, defaultMctsConfig, configs))
+          Compare(startingGame, timeController, defaultXmmConfig, defaultMctsConfig, configs))
       ..addCommand(
-          Rank(startingGame, defaultMoveTimer, defaultXmmConfig, defaultMctsConfig, configs))
+          Rank(startingGame, timeController, defaultXmmConfig, defaultMctsConfig, configs))
       ..addCommand(
-          ServeCommand(decoder, defaultMoveTimer, defaultXmmConfig, defaultMctsConfig, configs));
+          ServeCommand(decoder, timeController, defaultXmmConfig, defaultMctsConfig, configs));
 
     // Workaround: parse command separately before running it. Command Runner
     // does not like our usage of subcommands and crashes on run() if there's a
