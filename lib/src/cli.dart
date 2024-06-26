@@ -218,8 +218,6 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
   void runWithConfigs(List<EngineConfig> configs) async {
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
-    final config = configs[0];
-    final vsConfig = configs[1];
     final count = int.parse(argResults!['count']);
     final compareChoices = argResults!['choices'];
 
