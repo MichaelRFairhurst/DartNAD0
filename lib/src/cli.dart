@@ -308,8 +308,9 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
         defaultsTo: false);
   }
 
-  Thread startThread(List<Engine<G>> algs, Random random, bool refresh) {
+  Thread startThread(List<EngineConfig> configs, Random random, bool refresh) {
     return Thread((events) {
+      final algs = configs.map((c) => c.buildEngine<G>()).toList();
       events.on('game', (List<int> players) async {
         var game = startingGame;
         final aIdx = players[0];
@@ -369,7 +370,6 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
     final threadCount = int.parse(argResults!['threads']);
 
     final random = Random(seed);
-    final algs = configs.map((c) => c.buildEngine<G>()).toList();
     final refresh = argResults!['refresh'];
 
     print('[GAMES]');
@@ -380,8 +380,8 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
     final esc = String.fromCharCode(27);
     final clearStr = '$esc[1A$esc[2K' * (configs.length + 2);
 
-    final threads =
-        List.generate(threadCount, (i) => startThread(algs, random, refresh));
+    final threads = List.generate(
+        threadCount, (i) => startThread(configs, random, refresh));
 
     var startedGames = 0;
     var game = 0;
