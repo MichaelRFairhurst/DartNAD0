@@ -7,6 +7,7 @@ import 'package:expectiminimax/src/mcts.dart';
 import 'package:expectiminimax/src/other_engines/nth_engine.dart';
 import 'package:expectiminimax/src/other_engines/random_engine.dart';
 import 'package:expectiminimax/src/serve/serve_command.dart';
+import 'package:expectiminimax/src/serve/served_engine_config.dart';
 import 'package:thread/thread.dart';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/elo.dart';
@@ -80,6 +81,7 @@ class ListEnginesCommandRunner extends CommandRunner {
 Available engines for the above commands:
   xmm       Expectiminimax engine.
   mcts      Monte-Carlo Tree Search engine.
+  served    Connect over API to engine hosted by `serve` command.
   random    Utility engine which simply picks a random move.
   nth       Utility engine which always picks the nth move or nth-to-last move.
 ''';
@@ -456,6 +458,7 @@ abstract class ParseConfigCommand extends Command {
       this.defaultXmmConfig, this.defaultMctsConfig, this.configSpecs) {
     argParser.addCommand('xmm', xmmParser(defaultXmmConfig));
     argParser.addCommand('mcts', mctsParser(defaultMctsConfig));
+    argParser.addCommand('served', servedEngineParser());
     argParser.addCommand('random', randomEngineParser());
     argParser.addCommand('nth', nthEngineParser());
   }
@@ -471,6 +474,8 @@ Additionally, running this command requires specifying one or more engines:
                       Example: $name xmm --max-depth 8
     mcts              Monte-Carlo Tree Search game engine.
                       Example: $name mcts --max-playouts 10000
+    served            Engine runnnig with API launched via `serve` command.
+                      Example: $name served localhost:8080
     random            Simple engine which just picks random moves.
                       Example: $name random --seed 0
     nth               Simple engine which always picks the nth move.
@@ -491,6 +496,13 @@ ${xmmParser(defaultXmmConfig).usage.splitMapJoin(
 'mcts' engine config options:
 
 ${mctsParser(defaultMctsConfig).usage.splitMapJoin(
+            '\n',
+            onNonMatch: (line) => '    $line',
+          )}
+
+'served' engine config options:
+
+${servedEngineParser().usage.splitMapJoin(
             '\n',
             onNonMatch: (line) => '    $line',
           )}
@@ -522,6 +534,7 @@ ${nthEngineParser().usage.splitMapJoin(
     final configParser = ArgParser(allowTrailingOptions: false);
     configParser.addCommand('xmm', xmmParser(defaultXmmConfig));
     configParser.addCommand('mcts', mctsParser(defaultMctsConfig));
+    configParser.addCommand('served', servedEngineParser());
     configParser.addCommand('random', randomEngineParser());
     configParser.addCommand('nth', nthEngineParser());
 
@@ -532,7 +545,8 @@ ${nthEngineParser().usage.splitMapJoin(
           if (args.first.startsWith('-')) {
             throw 'Error: Specify an engine before engine flags: "$args"';
           }
-          if (!{'xmm', 'mcts', 'random', 'nth'}.contains(args.first)) {
+          if (!{'xmm', 'mcts', 'served', 'random', 'nth'}
+              .contains(args.first)) {
             throw 'Error: Invalid engine name: "${args.first}"';
           }
           try {
@@ -617,6 +631,8 @@ ${nthEngineParser().usage.splitMapJoin(
   ArgParser randomEngineParser() => ArgParser(allowTrailingOptions: false)
     ..addOption('seed', abbr: 's', help: 'seed for random move selection.');
 
+  ArgParser servedEngineParser() => ArgParser();
+
   ArgParser nthEngineParser() => ArgParser(allowTrailingOptions: false)
     ..addFlag('from-end',
         abbr: 'e', help: 'select nth move from the end instead of the start')
@@ -633,6 +649,8 @@ ${nthEngineParser().usage.splitMapJoin(
         return getXmmConfig(results.command!);
       case 'mcts':
         return getMctsConfig(results.command!);
+      case 'served':
+        return getServedEngineConfig(results.command!);
       case 'random':
         return getRandomEngineConfig(results.command!);
       case 'nth':
@@ -665,6 +683,14 @@ ${nthEngineParser().usage.splitMapJoin(
       cUct: double.parse(results['c-uct']),
       cPuct: double.parse(results['c-puct']),
     );
+  }
+
+  ServedEngineConfig getServedEngineConfig(ArgResults results) {
+    if (results.rest.length != 1) {
+      throw FormatException('wrong number of arguments provided, expected'
+          ' hostname, got ${results.rest}');
+    }
+    return ServedEngineConfig(server: results.rest.single);
   }
 
   RandomEngineConfig getRandomEngineConfig(ArgResults results) {

@@ -390,8 +390,11 @@ void main(List<String> args) {
 ```
 
 The command line interface supports multiple engines. Use `xmm` to specify the
-expectiminimax engine, and `mcts` to use monte-carlo tree search. Run `help` to
-see all available engines.
+expectiminimax engine, and `mcts` to use monte-carlo tree search. Alternatively,
+serve an engine with `serve [engine]`, and connect to it with
+`served localhost:port`.
+
+Run `help` to see all available engines.
 
 Basic usage:
 
@@ -409,6 +412,9 @@ dart bin/my_game.dart bench -c 100 xmm --max-depth=8
 
 # Serve your game engine over http
 dart bin/my_game.dart serve --port 8080 xmm --max-time=50
+
+# Watch your engine that's served over http play a game
+dart bin/my_game.dart watch served localhost:8080
 
 # Run the 'perft' tool on your game, a useful benchmark measuring how long it
 # takes to perform all possible moves up to 6 moves ahead.
@@ -493,6 +499,48 @@ a neural network) to predict the chance of a player winning the game.
 - `--expand-depth` When a leaf is selected, how deep to traverse for adding new
   nodes. Traditional pUCT searching uses an expand depth of 1, however, this can
   amount to a short-sighted search when the scoring function is short sighted.
+
+## Serving an engine over HTTP
+
+To serve an engine over HTTP, implement `Game.encode()` and pass a `decoder`
+function into the `CliTools` constructor. Encoding/decoding can use any data
+format you wish, for instance, JSON. A chess engine would likely use FEN
+notation.
+
+```dart
+class MyGame extends Game<MyGame> {
+  // ...
+  String encode() => turnGameToString();
+  // ...
+}
+
+//...
+
+CliTools(
+  //...
+  decoder: buildGameFromString,
+);
+```
+
+Now you can run the serve command:
+
+```bash
+dart your_wrapper.dart serve --port 8080 mcts
+```
+
+You can run the engine with the `ServedEngine` class:
+
+```dart
+final engine = ServedEngine(config);
+await engine.pickBest(yourGame);
+```
+
+Or reference it from other CLI tools:
+
+```bash
+# Watch your served engine play a game
+dart your_wrapper.dart watch served localhost:8080
+```
 
 ## Performance considerations
 
