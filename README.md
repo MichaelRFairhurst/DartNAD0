@@ -335,15 +335,20 @@ Lastly, its easy to call the expectiminimax algorithm with your new `Game`:
 
 ```dart
   var game = DiceBattle.brandNewGame();
-  var minimax = Expectiminimax<DiceBattle>(maxDepth: 10);
+  var config = ExpectiminimaxConfig(...);
+  var minimax = config.buildEngine<DiceBattle>();
 
-  final move = minimax.chooseBest(game.getMoves(), game);
+  final move = minimax.chooseBest(
+	game.getMoves(),
+	game,
+	RelativeTimeControl(const Duration(seconds: 1)),
+  );
 ```
 
-Pick a suitable depth for your requirements. Even small depths can be expensive
-to compute, as expectiminimax is not as efficient as minimax, due mostly to less
-efficient alpha beta pruning. But of course, larger depths will select better
-moves.
+Pick a suitable time and config for your requirements. Even small depths can be
+expensive to compute, as expectiminimax is not as efficient as minimax, due
+mostly to less efficient alpha beta pruning. But of course, larger depths will
+select better moves.
 
 In general, it is best to only construct one `Expectiminimax<G>()` and re-use
 it. Each instance maintains a transition table to cache prior results, which are
@@ -386,6 +391,7 @@ as serving your engine over http.
 void main(List<String> args) {
   final cli = CliTool(
     startingGame: DiceGame(p1Score: 0, p2Score: 0),
+    defaultMoveTimer: const Duration(seconds: 1),
 	defaultXmmConfig(
 	  maxDepth: 20,
 	  maxTime: const Duration(seconds: 1),

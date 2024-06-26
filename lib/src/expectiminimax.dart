@@ -5,6 +5,7 @@ import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/stats.dart';
+import 'package:dartnad0/src/time_control.dart';
 import 'package:dartnad0/src/transposition.dart';
 import 'package:dartnad0/src/util.dart';
 
@@ -53,7 +54,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
 
   /// A time to abort the search, set when search begins, and checked on every
   /// iteration of the search.
-  DateTime timeout = DateTime.now();
+  late TimeControl timeControl;
 
   /// Used by negamax algorithm to know when minning/maxing player turns flip,
   /// so we can compute `-score(child, -beta, -alpha)`.
@@ -63,9 +64,10 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
     transpositionTable.clear();
   }
 
-  Future<Move<G>> chooseBest(List<Move<G>> moves, G game) async {
+  Future<Move<G>> chooseBest(
+      List<Move<G>> moves, G game, TimeControl timeControl) async {
     final start = DateTime.now();
-    timeout = start.add(maxSearchDuration);
+    this.timeControl = timeControl..constrain(maxSearchDuration);
     final alpha = -2.0;
     final beta = 2.0;
     _isMaxing = game.isMaxing;
@@ -480,7 +482,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
       return score;
     }
 
-    if (!DateTime.now().isBefore(timeout)) {
+    if (timeControl.isExceeded()) {
       throw TimeoutException('Search timed out, backing out');
     }
 

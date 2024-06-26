@@ -265,6 +265,7 @@ class Attack implements Move<DiceBattle> {
 
 void main(List<String> args) {
   CliTools<DiceBattle>(
+    defaultMoveTimer: Duration(milliseconds: 25),
     defaultXmmConfig: ExpectiminimaxConfig(
       maxDepth: 50,
       maxTime: Duration(milliseconds: 25),

@@ -4,6 +4,7 @@ import 'package:dartnad0/src/chance.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/mcts.dart';
 import 'package:dartnad0/src/move.dart';
+import 'package:dartnad0/src/time_control.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -628,7 +629,8 @@ void main() {
     );
 
     final mcts = Mcts<TestGame>(Random(0), testConfig(cUct: 1.0));
-    mcts.timeout = DateTime.now().add(const Duration(hours: 1));
+    mcts.timeControl =
+        AbsoluteTimeControl(DateTime.now().add(const Duration(hours: 1)));
     final score = mcts.expand(node, 10, 10);
 
     MctsNode<TestGame, dynamic> child = node;
@@ -654,7 +656,8 @@ void main() {
     );
 
     final mcts = Mcts<TestGame>(Random(), testConfig(cpUct: 1.0));
-    mcts.timeout = DateTime.now().add(const Duration(hours: 1));
+    mcts.timeControl =
+        AbsoluteTimeControl(DateTime.now().add(const Duration(hours: 1)));
     mcts.expand(node, 10, 1);
 
     expect(node.simulations, equals(1));
@@ -697,7 +700,8 @@ void main() {
     );
 
     final mcts = Mcts<TestGame>(Random(0), testConfig(cUct: 1.0));
-    mcts.timeout = DateTime.now().add(const Duration(hours: 1));
+    mcts.timeControl =
+        AbsoluteTimeControl(DateTime.now().add(const Duration(hours: 1)));
     final score = mcts.expand(node, 10, 2);
 
     MctsNode<TestGame, dynamic> child = node;
@@ -724,7 +728,8 @@ void main() {
     );
 
     final mcts = Mcts<TestGame>(Random(), testConfig(cpUct: 1.0));
-    mcts.timeout = DateTime.now().add(const Duration(hours: 1));
+    mcts.timeControl =
+        AbsoluteTimeControl(DateTime.now().add(const Duration(hours: 1)));
     mcts.expand(node, 10, 1);
 
     expect(node.simulations, equals(1));
@@ -761,7 +766,8 @@ void main() {
     );
 
     final mcts = Mcts<TestGame>(Random(0), testConfig(cpUct: 1.0));
-    mcts.timeout = DateTime.now().add(const Duration(hours: 1));
+    mcts.timeControl =
+        AbsoluteTimeControl(DateTime.now().add(const Duration(hours: 1)));
     mcts.expand(node, 10, 2);
 
     expect(node.simulations, equals(1));

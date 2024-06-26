@@ -5,15 +5,21 @@ import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/mcts.dart';
 import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/time_control.dart';
 
 class WatchGame<G extends Game<G>> extends ParseConfigCommand {
   final name = 'watch';
   final description = 'Run a game and print out the moves/events/positions.';
 
   final G startingGame;
+  final Duration defaultMoveTimer;
 
-  WatchGame(this.startingGame, ExpectiminimaxConfig defaultXmmConfig,
-      MctsConfig defaultMctsConfig, List<List<String>> configSpecs)
+  WatchGame(
+      this.startingGame,
+      this.defaultMoveTimer,
+      ExpectiminimaxConfig defaultXmmConfig,
+      MctsConfig defaultMctsConfig,
+      List<List<String>> configSpecs)
       : super(defaultXmmConfig, defaultMctsConfig, configSpecs) {
     argParser.addOption('seed',
         abbr: 's', help: 'Random number generator seed.');
@@ -40,7 +46,8 @@ class WatchGame<G extends Game<G>> extends ParseConfigCommand {
     while (game.score != 1.0 && game.score != -1.0) {
       steps++;
       print('step $steps');
-      final move = await engine.chooseBest(game.getMoves(), game);
+      final move = await engine.chooseBest(
+          game.getMoves(), game, RelativeTimeControl(defaultMoveTimer));
       print('Player chooses: ${move.description}');
       final chance = move.perform(game);
       final outcome = chance.pick(random.nextDouble());

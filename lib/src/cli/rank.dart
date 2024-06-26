@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:dartnad0/src/cli/parse_config_command.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/mcts.dart';
+import 'package:dartnad0/src/time_control.dart';
 import 'package:thread/thread.dart';
 import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/elo.dart';
@@ -15,9 +16,14 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
       ' between them.';
 
   final G startingGame;
+  final Duration defaultMoveTimer;
 
-  Rank(this.startingGame, ExpectiminimaxConfig defaultXmmConfig,
-      MctsConfig defaultMctsConfig, List<List<String>> configSpecs)
+  Rank(
+      this.startingGame,
+      this.defaultMoveTimer,
+      ExpectiminimaxConfig defaultXmmConfig,
+      MctsConfig defaultMctsConfig,
+      List<List<String>> configSpecs)
       : super(defaultXmmConfig, defaultMctsConfig, configSpecs) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '10', help: 'Maximum number of games to play');
@@ -83,9 +89,11 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
 
           final Move<G> move;
           if (game.isMaxing) {
-            move = await playerA.chooseBest(moves, game);
+            move = await playerA.chooseBest(
+                moves, game, RelativeTimeControl(defaultMoveTimer));
           } else {
-            move = await playerB.chooseBest(moves, game);
+            move = await playerB.chooseBest(
+                moves, game, RelativeTimeControl(defaultMoveTimer));
           }
           final chance = move.perform(game);
           final outcome = chance.pick(random.nextDouble());

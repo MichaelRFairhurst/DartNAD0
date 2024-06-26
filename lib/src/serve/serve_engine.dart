@@ -5,6 +5,7 @@ import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/stats.dart';
+import 'package:dartnad0/src/time_control.dart';
 import 'package:http/http.dart' as http;
 
 /// An engine served over http instead of run locally.
@@ -28,10 +29,12 @@ class ServedEngine<G extends Game<G>> implements Engine<G> {
       : _sessionId = Random().nextInt(4294967296).toRadixString(16);
 
   @override
-  Future<Move<G>> chooseBest(List<Move<G>> moves, G game) async {
+  Future<Move<G>> chooseBest(
+      List<Move<G>> moves, G game, TimeControl timeControl) async {
     final uri = Uri.http(server, '/$_sessionId/chooseBest');
     for (var retries = 0;; ++retries) {
       try {
+        // TODO: Pass along time control!
         final response = await http.post(uri, body: game.encode());
         return moves[int.parse(response.body)];
       } catch (e) {

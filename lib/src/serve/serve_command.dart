@@ -5,6 +5,7 @@ import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/mcts.dart';
+import 'package:dartnad0/src/time_control.dart';
 import 'package:shelf/shelf.dart';
 
 import 'package:shelf/shelf_io.dart' as shelf_io;
@@ -40,11 +41,16 @@ class ServeCommand<G extends Game<G>> extends ParseConfigCommand {
   final description = 'Serve a game engine locally at a given port';
 
   final G Function(String) decoder;
+  final Duration defaultMoveTimer;
 
   final _sessions = <String, _Session>{};
 
-  ServeCommand(this.decoder, ExpectiminimaxConfig defaultXmmConfig,
-      MctsConfig defaultMctsConfig, List<List<String>> configSpecs)
+  ServeCommand(
+      this.decoder,
+      this.defaultMoveTimer,
+      ExpectiminimaxConfig defaultXmmConfig,
+      MctsConfig defaultMctsConfig,
+      List<List<String>> configSpecs)
       : super(defaultXmmConfig, defaultMctsConfig, configSpecs) {
     argParser.addOption('port',
         abbr: 'p', defaultsTo: '8080', help: 'Port to serve this engine on.');
@@ -60,14 +66,15 @@ class ServeCommand<G extends Game<G>> extends ParseConfigCommand {
   /// This is static because if it were an instance method, the resulting thread
   /// would be bound to [this], which has the property [_sessions], which
   /// includes [Thread]s, which can not be sent across isolates.
-  static Thread startThread<G extends Game<G>>(
-      EngineConfig config, G Function(String) decoder) {
+  static Thread startThread<G extends Game<G>>(EngineConfig config,
+      G Function(String) decoder, Duration defaultMoveTimer) {
     return Thread((events) {
       final engine = config.buildEngine<G>();
       events.on<String>('chooseBest', (str) async {
         final game = decoder(str);
         final moves = game.getMoves();
-        final move = await engine.chooseBest(moves, game);
+        final move = await engine.chooseBest(
+            moves, game, RelativeTimeControl(defaultMoveTimer));
         events.emit('bestMove', moves.indexOf(move));
       });
 
@@ -87,10 +94,11 @@ class ServeCommand<G extends Game<G>> extends ParseConfigCommand {
     api.post('/<sid>/chooseBest', (request, String sid) async {
       final session = _sessions.putIfAbsent(sid, () {
         print('Starting new session: $sid');
-        return _Session(startThread(config, decoder));
+        return _Session(startThread(config, decoder, defaultMoveTimer));
       });
       final body = await request.readAsString();
 
+      // TODO: use time control specified in request
       session.thread.emit('chooseBest', body);
       final idx = await session.thread.once<int>('bestMove', (idx) => idx);
       session.lastAccessed = DateTime.now();

@@ -575,6 +575,7 @@ class AbandonTurn implements Move<Backgammon> {
 
 void main(List<String> args) {
   CliTools<Backgammon>(
+    defaultMoveTimer: const Duration(milliseconds: 25),
     defaultXmmConfig: ExpectiminimaxConfig(
       maxDepth: 40,
       maxTime: Duration(milliseconds: 25),

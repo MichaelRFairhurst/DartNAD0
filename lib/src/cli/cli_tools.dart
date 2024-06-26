@@ -11,12 +11,14 @@ import 'package:dartnad0/src/perft.dart';
 
 class CliTools<G extends Game<G>> {
   final G startingGame;
+  final Duration defaultMoveTimer;
   final G Function(String) decoder;
   final ExpectiminimaxConfig defaultXmmConfig;
   final MctsConfig defaultMctsConfig;
 
   CliTools({
     required this.startingGame,
+    required this.defaultMoveTimer,
     required this.defaultXmmConfig,
     required this.defaultMctsConfig,
     G Function(String)? decoder,
@@ -51,16 +53,16 @@ class CliTools<G extends Game<G>> {
       ..addCommand(PerftCommand(startingGame))
       // TODO: play two AIs against each other
       ..addCommand(
-          WatchGame(startingGame, defaultXmmConfig, defaultMctsConfig, []))
+          WatchGame(startingGame, defaultMoveTimer, defaultXmmConfig, defaultMctsConfig, []))
       // TODO: Distinguish SingleConfigCommand from MultiConfigCommand
       ..addCommand(
-          Benchmark(startingGame, defaultXmmConfig, defaultMctsConfig, []))
+          Benchmark(startingGame,  defaultMoveTimer,defaultXmmConfig, defaultMctsConfig, []))
       ..addCommand(
-          Compare(startingGame, defaultXmmConfig, defaultMctsConfig, configs))
+          Compare(startingGame, defaultMoveTimer, defaultXmmConfig, defaultMctsConfig, configs))
       ..addCommand(
-          Rank(startingGame, defaultXmmConfig, defaultMctsConfig, configs))
+          Rank(startingGame, defaultMoveTimer, defaultXmmConfig, defaultMctsConfig, configs))
       ..addCommand(
-          ServeCommand(decoder, defaultXmmConfig, defaultMctsConfig, configs));
+          ServeCommand(decoder, defaultMoveTimer, defaultXmmConfig, defaultMctsConfig, configs));
 
     // Workaround: parse command separately before running it. Command Runner
     // does not like our usage of subcommands and crashes on run() if there's a

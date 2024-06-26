@@ -5,6 +5,7 @@ import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/stats.dart';
+import 'package:dartnad0/src/time_control.dart';
 import 'package:dartnad0/src/util.dart';
 
 class MctsConfig implements EngineConfig {
@@ -68,7 +69,7 @@ class Mcts<G extends Game<G>> implements Engine<G> {
   final MctsConfig config;
   final Random random;
   final SearchStats stats;
-  late DateTime timeout;
+  late TimeControl timeControl;
 
   MctsNode<G, dynamic>? lastTree;
 
@@ -79,15 +80,15 @@ class Mcts<G extends Game<G>> implements Engine<G> {
     lastTree = null;
   }
 
-  Future<Move<G>> chooseBest(List<Move<G>> moves, G game) async {
-    final start = DateTime.now();
-    timeout = start.add(config.maxTime);
+  Future<Move<G>> chooseBest(
+      List<Move<G>> moves, G game, TimeControl timeControl) async {
+	this.timeControl = timeControl..constrain(config.maxTime);
 
     final cached = lastTree?.findChildGame(game, 2);
     final tree = cached ?? MctsMoveNode<G>(game, 0);
     lastTree = tree;
     for (int i = 0; true; ++i) {
-      if (!DateTime.now().isBefore(timeout) || i == config.maxPlayouts) {
+      if (timeControl.isExceeded() || i == config.maxPlayouts) {
         break;
       }
 
@@ -103,7 +104,7 @@ class Mcts<G extends Game<G>> implements Engine<G> {
     if (depth <= 0 ||
         expandDepth <= 0 ||
         tree.isTerminal ||
-        !DateTime.now().isBefore(timeout)) {
+        timeControl.isExceeded()) {
       return tree.backpropagate(tree.score);
     }
 

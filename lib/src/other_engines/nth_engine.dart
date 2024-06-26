@@ -2,6 +2,7 @@ import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/stats.dart';
+import 'package:dartnad0/src/time_control.dart';
 
 class NthEngineConfig extends EngineConfig {
   final Direction direction;
@@ -30,7 +31,8 @@ class NthEngine<G extends Game<G>> extends Engine<G> {
   NthEngine(this.config);
 
   @override
-  Future<Move<G>> chooseBest(List<Move<G>> moves, G game) async {
+  Future<Move<G>> chooseBest(
+      List<Move<G>> moves, G game, TimeControl timeControl) async {
     final Iterable<Move<G>> orderedMoves;
     switch (config.direction) {
       case Direction.fromStart:

@@ -5,15 +5,21 @@ import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/mcts.dart';
 import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/time_control.dart';
 
 class Benchmark<G extends Game<G>> extends ParseConfigCommand {
   final name = 'bench';
   final description = 'Play a series of games, tracking performance.';
 
   final G startingGame;
+  final Duration defaultMoveTimer;
 
-  Benchmark(this.startingGame, ExpectiminimaxConfig defaultXmmConfig,
-      MctsConfig defaultMctsConfig, List<List<String>> configSpecs)
+  Benchmark(
+      this.startingGame,
+      this.defaultMoveTimer,
+      ExpectiminimaxConfig defaultXmmConfig,
+      MctsConfig defaultMctsConfig,
+      List<List<String>> configSpecs)
       : super(defaultXmmConfig, defaultMctsConfig, configSpecs) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '20', help: 'How many games to play');
@@ -42,7 +48,8 @@ class Benchmark<G extends Game<G>> extends ParseConfigCommand {
       }
 
       while (game.score != 1.0 && game.score != -1.0) {
-        final move = await engine.chooseBest(game.getMoves(), game);
+        final move = await engine.chooseBest(
+            game.getMoves(), game, RelativeTimeControl(defaultMoveTimer));
         final chance = move.perform(game);
         final outcome = chance.pick(random.nextDouble());
         game = outcome.outcome;
