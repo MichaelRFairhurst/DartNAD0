@@ -21,7 +21,7 @@ class RandomEngine<G extends Game<G>> extends Engine<G> {
   RandomEngine([int? seed]) : random = Random(seed);
 
   @override
-  Move<G> chooseBest(List<Move<G>> moves, G game) {
+  Future<Move<G>> chooseBest(List<Move<G>> moves, G game) async {
     return moves[random.nextInt(moves.length)];
   }
 

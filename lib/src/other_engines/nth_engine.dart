@@ -30,7 +30,7 @@ class NthEngine<G extends Game<G>> extends Engine<G> {
   NthEngine(this.config);
 
   @override
-  Move<G> chooseBest(List<Move<G>> moves, G game) {
+  Future<Move<G>> chooseBest(List<Move<G>> moves, G game) async {
     final Iterable<Move<G>> orderedMoves;
     switch (config.direction) {
       case Direction.fromStart:

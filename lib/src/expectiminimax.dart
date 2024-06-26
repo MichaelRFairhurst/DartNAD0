@@ -63,7 +63,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
     transpositionTable.clear();
   }
 
-  Move<G> chooseBest(List<Move<G>> moves, G game) {
+  Future<Move<G>> chooseBest(List<Move<G>> moves, G game) async {
     final start = DateTime.now();
     timeout = start.add(maxSearchDuration);
     final alpha = -2.0;

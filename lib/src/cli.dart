@@ -98,7 +98,7 @@ class WatchGame<G extends Game<G>> extends ParseConfigCommand {
   }
 
   @override
-  void runWithConfigs(List<EngineConfig> configs) {
+  void runWithConfigs(List<EngineConfig> configs) async {
     final config = configs[0];
     final printStats = argResults!['print-stats'];
     final seed =
@@ -111,7 +111,7 @@ class WatchGame<G extends Game<G>> extends ParseConfigCommand {
     while (game.score != 1.0 && game.score != -1.0) {
       steps++;
       print('step $steps');
-      final move = engine.chooseBest(game.getMoves(), game);
+      final move = await engine.chooseBest(game.getMoves(), game);
       print('Player chooses: ${move.description}');
       final chance = move.perform(game);
       final outcome = chance.pick(random.nextDouble());
@@ -155,7 +155,7 @@ class Benchmark<G extends Game<G>> extends ParseConfigCommand {
   }
 
   @override
-  void runWithConfigs(List<EngineConfig> configs) {
+  void runWithConfigs(List<EngineConfig> configs) async {
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
     final config = configs[0];
@@ -171,7 +171,7 @@ class Benchmark<G extends Game<G>> extends ParseConfigCommand {
       }
 
       while (game.score != 1.0 && game.score != -1.0) {
-        final move = engine.chooseBest(game.getMoves(), game);
+        final move = await engine.chooseBest(game.getMoves(), game);
         final chance = move.perform(game);
         final outcome = chance.pick(random.nextDouble());
         game = outcome.outcome;
@@ -205,7 +205,7 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
   }
 
   @override
-  void runWithConfigs(List<EngineConfig> configs) {
+  void runWithConfigs(List<EngineConfig> configs) async {
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
     final config = configs[0];
@@ -227,9 +227,9 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
 
       while (game.score != 1.0 && game.score != -1.0) {
         final moves = game.getMoves();
-        final move = algs[0].chooseBest(moves, game);
+        final move = await algs[0].chooseBest(moves, game);
         for (var c = 1; c < configs.length; ++c) {
-          final vsMove = algs[c].chooseBest(moves, game);
+          final vsMove = await algs[c].chooseBest(moves, game);
           if (compareChoices && move != vsMove) {
             print('Difference on turn $turn, game $i');
             print('- Baseline chose ${move.description}');
@@ -302,7 +302,7 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
 
   Thread startThread(List<Engine<G>> algs, Random random, bool refresh) {
     return Thread((events) {
-      events.on('game', (List<int> players) {
+      events.on('game', (List<int> players) async {
         var game = startingGame;
         final aIdx = players[0];
         var bIdx = players[1];
@@ -332,9 +332,9 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
 
           final Move<G> move;
           if (game.isMaxing) {
-            move = playerA.chooseBest(moves, game);
+            move = await playerA.chooseBest(moves, game);
           } else {
-            move = playerB.chooseBest(moves, game);
+            move = await playerB.chooseBest(moves, game);
           }
           final chance = move.perform(game);
           final outcome = chance.pick(random.nextDouble());

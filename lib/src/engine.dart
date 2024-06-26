@@ -5,7 +5,7 @@ import 'package:expectiminimax/src/stats.dart';
 /// An engine is an algorithm, such as expectimiminax, that can choose what it
 /// considers the best move for a game position.
 abstract class Engine<G extends Game<G>> {
-  Move<G> chooseBest(List<Move<G>> moves, G game);
+  Future<Move<G>> chooseBest(List<Move<G>> moves, G game);
 
   /// Clear all data than an engine may cache data it learned upon analyzing a
   /// move (eg, transpositions etc) that it would otherwise reuse in the next

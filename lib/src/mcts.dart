@@ -79,7 +79,7 @@ class Mcts<G extends Game<G>> implements Engine<G> {
     lastTree = null;
   }
 
-  Move<G> chooseBest(List<Move<G>> moves, G game) {
+  Future<Move<G>> chooseBest(List<Move<G>> moves, G game) async {
     final start = DateTime.now();
     timeout = start.add(config.maxTime);
 
