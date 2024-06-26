@@ -20,6 +20,7 @@ fun!
 - star2-style probing pass on CHANCE descendents
 - MCTS with UCT-based and/or pUCT-based node selection
 - SPRT testing support
+- serving engine over HTTP
 
 ## TODO
 
@@ -366,7 +367,8 @@ A simple game loop between two AIs will look like the following:
 ## Command line tools
 
 Specify a starting game state and default engine configuration settings to
-easily make a command line tool for playing and benchmarking your game!
+easily make a command line tool for playing and benchmarking your game, as well
+as serving your engine over http.
 
 ```dart
 // bin/my_game.dart
@@ -404,6 +406,9 @@ dart bin/my_game.dart watch mcts --max-time=50
 # Run 100 games, searching each move up to 8 plies in depth, and print
 # performance stats.
 dart bin/my_game.dart bench -c 100 xmm --max-depth=8
+
+# Serve your game engine over http
+dart bin/my_game.dart serve --port 8080 xmm --max-time=50
 
 # Run the 'perft' tool on your game, a useful benchmark measuring how long it
 # takes to perform all possible moves up to 6 moves ahead.

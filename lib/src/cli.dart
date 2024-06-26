@@ -6,6 +6,7 @@ import 'package:expectiminimax/src/engine.dart';
 import 'package:expectiminimax/src/mcts.dart';
 import 'package:expectiminimax/src/other_engines/nth_engine.dart';
 import 'package:expectiminimax/src/other_engines/random_engine.dart';
+import 'package:expectiminimax/src/serve/serve_command.dart';
 import 'package:thread/thread.dart';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/elo.dart';
@@ -15,6 +16,7 @@ import 'package:expectiminimax/src/perft.dart';
 
 class CliTools<G extends Game<G>> {
   final G startingGame;
+  final G Function(String) decoder;
   final ExpectiminimaxConfig defaultXmmConfig;
   final MctsConfig defaultMctsConfig;
 
@@ -22,7 +24,11 @@ class CliTools<G extends Game<G>> {
     required this.startingGame,
     required this.defaultXmmConfig,
     required this.defaultMctsConfig,
-  });
+    G Function(String)? decoder,
+  }) : decoder = decoder ?? throwingDecoder;
+
+  static Never throwingDecoder(String) =>
+      throw UnimplementedError('no decoder specified');
 
   void run(List<String> args) {
     // Convert args to a mutable list
@@ -57,7 +63,9 @@ class CliTools<G extends Game<G>> {
       ..addCommand(
           Compare(startingGame, defaultXmmConfig, defaultMctsConfig, configs))
       ..addCommand(
-          Rank(startingGame, defaultXmmConfig, defaultMctsConfig, configs));
+          Rank(startingGame, defaultXmmConfig, defaultMctsConfig, configs))
+      ..addCommand(
+          ServeCommand(decoder, defaultXmmConfig, defaultMctsConfig, configs));
 
     commandRunner.run(sections[0]);
   }
