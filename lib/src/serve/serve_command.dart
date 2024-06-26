@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:expectiminimax/src/cli.dart';
+import 'package:expectiminimax/src/cli/parse_config_command.dart';
 import 'package:expectiminimax/src/config.dart';
 import 'package:expectiminimax/src/engine.dart';
 import 'package:expectiminimax/src/game.dart';
