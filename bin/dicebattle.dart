@@ -35,6 +35,17 @@ class DiceBattle extends Game<DiceBattle> {
   final bool p1Turn;
 
   @override
+  String encode() => [
+        p1Score,
+        p1DiceScore,
+        p1CanAttack ? 1 : 0,
+        p2Score,
+        p2DiceScore,
+        p2CanAttack ? 1 : 0,
+        p1Turn ? 1 : 0,
+      ].join(',');
+
+  @override
   double get score {
     if (p1Score >= winningScore) {
       return 1.0;
@@ -272,5 +283,18 @@ void main(List<String> args) {
       p2CanAttack: true,
       roll: Roll(),
     ),
+    decoder: (str) {
+      final list = str.split(',').map(int.parse).toList();
+      return DiceBattle(
+        roll: Roll(),
+        p1Score: list[0],
+        p1DiceScore: list[1],
+        p1CanAttack: list[2] == 1,
+        p2Score: list[3],
+        p2DiceScore: list[4],
+        p2CanAttack: list[5] == 1,
+        p1Turn: list[6] == 1,
+      );
+    },
   ).run(args);
 }
