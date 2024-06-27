@@ -272,7 +272,7 @@ void main(List<String> args) {
       maxTime: Duration(milliseconds: 25),
     ),
     defaultMctsConfig: MctsConfig(
-      maxDepth: 50,
+      maxDepth: 22,
       maxTime: Duration(milliseconds: 25),
     ),
     startingGame: DiceBattle(
