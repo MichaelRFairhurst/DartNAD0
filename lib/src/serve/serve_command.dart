@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:dartnad0/src/cli/parse_config_command.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
-import 'package:dartnad0/src/time/time_controller.dart';
+import 'package:dartnad0/src/time/time_control.dart';
 import 'package:shelf/shelf.dart';
 
 import 'package:shelf/shelf_io.dart' as shelf_io;
@@ -39,11 +39,10 @@ class ServeCommand<G extends Game<G>> extends ParseConfigCommand {
   final description = 'Serve a game engine locally at a given port';
 
   final G Function(String) decoder;
-  final TimeController timeController;
 
   final _sessions = <String, _Session>{};
 
-  ServeCommand(this.decoder, this.timeController,
+  ServeCommand(this.decoder,
       {required super.engines, required super.configSpecs}) {
     argParser.addOption('port',
         abbr: 'p', defaultsTo: '8080', help: 'Port to serve this engine on.');
@@ -59,15 +58,15 @@ class ServeCommand<G extends Game<G>> extends ParseConfigCommand {
   /// This is static because if it were an instance method, the resulting thread
   /// would be bound to [this], which has the property [_sessions], which
   /// includes [Thread]s, which can not be sent across isolates.
-  static Thread startThread<G extends Game<G>>(EngineConfig config,
-      G Function(String) decoder, TimeController timeController) {
+  static Thread startThread<G extends Game<G>>(
+      EngineConfig config, G Function(String) decoder) {
     return Thread((events) {
       final engine = config.buildEngine<G>();
-      events.on<String>('chooseBest', (str) async {
-        final game = decoder(str);
+      events.on<_ChooseBestQuery>('chooseBest', (query) async {
+        final game = decoder(query.encodedGame);
         final moves = game.getMoves();
-        final move = await engine.chooseBest(
-            moves, game, timeController.makeMoveTimer());
+		print('running with ${query.timeControl}');
+        final move = await engine.chooseBest(moves, game, query.timeControl);
         events.emit('bestMove', moves.indexOf(move));
       });
 
@@ -84,15 +83,15 @@ class ServeCommand<G extends Game<G>> extends ParseConfigCommand {
     final keepalive = Duration(seconds: int.parse(argResults!['keepalive']));
     final api = Router();
 
-    api.post('/<sid>/chooseBest', (request, String sid) async {
+    api.post('/<sid>/chooseBest', (Request request, String sid) async {
       final session = _sessions.putIfAbsent(sid, () {
         print('Starting new session: $sid');
-        return _Session(startThread(config, decoder, timeController));
+        return _Session(startThread(config, decoder));
       });
+      final moveTimer = makeMoveTimer(request.url.queryParameters);
       final body = await request.readAsString();
 
-      // TODO: use time control specified in request
-      session.thread.emit('chooseBest', body);
+      session.thread.emit('chooseBest', _ChooseBestQuery(body, moveTimer));
       final idx = await session.thread.once<int>('bestMove', (idx) => idx);
       session.lastAccessed = DateTime.now();
 
@@ -124,6 +123,32 @@ class ServeCommand<G extends Game<G>> extends ParseConfigCommand {
     final pipeline = const Pipeline().addHandler(api);
     shelf_io.serve(pipeline, 'localhost', port);
   }
+
+  TimeControl makeMoveTimer(Map<String, String> queryParameters) {
+    final relativeParam = queryParameters['reltime'];
+    final absoluteParam = queryParameters['time'];
+
+    if (relativeParam == null && absoluteParam == null) {
+      throw FormatException(
+          'no time control (&time=123 or &reltime=123) specified');
+    } else if (relativeParam != null && absoluteParam != null) {
+      throw FormatException('Error: both time and reltime specified, invalid');
+    } else if (relativeParam != null) {
+      final moveTime = Duration(milliseconds: int.parse(relativeParam));
+      return RelativeTimeControl(moveTime);
+    } else {
+      final moveTime =
+          DateTime.fromMillisecondsSinceEpoch(int.parse(absoluteParam!));
+      return AbsoluteTimeControl(moveTime);
+    }
+  }
+}
+
+class _ChooseBestQuery {
+  final String encodedGame;
+  final TimeControl timeControl;
+
+  const _ChooseBestQuery(this.encodedGame, this.timeControl);
 }
 
 class _Session {

@@ -1,4 +1,4 @@
-import 'package:dartnad0/src/time_control.dart';
+import 'package:dartnad0/src/time/time_control.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -45,6 +45,31 @@ void main() {
     absolute.constrain(const Duration(seconds: 4));
     expect(absolute.isExceededFor(beforeTime), isFalse);
     expect(absolute.isExceededFor(originalTime), isTrue);
+  });
+
+  test('absolute time control to param', () {
+    final absolute =
+        AbsoluteTimeControl(DateTime.fromMillisecondsSinceEpoch(12345));
+    expect(absolute.toQueryParameters(), {'time': '12345'});
+  });
+
+  test('absolute time control to param after constrain large', () {
+    final absolute =
+        AbsoluteTimeControl(DateTime.fromMillisecondsSinceEpoch(12345));
+    absolute.constrain(const Duration(milliseconds: 2000));
+    expect(absolute.toQueryParameters(), {'time': '12345'});
+  });
+
+  test('absolute time control to param after constrain small', () {
+    final endTime = DateTime.now().add(const Duration(milliseconds: 150));
+    final absolute = AbsoluteTimeControl(endTime);
+    expect(absolute.toQueryParameters(),
+        {'time': endTime.millisecondsSinceEpoch.toString()});
+    absolute.constrain(const Duration(milliseconds: 100));
+    expect(absolute.toQueryParameters(),
+        isNot({'time': endTime.millisecondsSinceEpoch.toString()}));
+    expect(absolute.toQueryParameters(),
+        {'time': absolute.endTime.millisecondsSinceEpoch.toString()});
   });
 
   test('relative time control is exceeded', () {
@@ -97,5 +122,28 @@ void main() {
         relative
             .isExceededFor(originalTime.add(const Duration(milliseconds: 100))),
         isTrue);
+  });
+
+  test('relative time control to param', () {
+    final relative = RelativeTimeControl(const Duration(milliseconds: 123));
+    expect(relative.toQueryParameters(), {'reltime': '123'});
+  });
+
+  test('relative time control to param after constrain null throws', () {
+    final relative = RelativeTimeControl(const Duration(milliseconds: 123));
+    relative.constrain(null);
+    expect(relative.toQueryParameters, throwsA(anything));
+  });
+
+  test('relative time control to param after constrained throws', () {
+    final relative = RelativeTimeControl(const Duration(milliseconds: 123));
+    relative.constrain(const Duration(milliseconds: 25));
+    expect(relative.toQueryParameters, throwsA(anything));
+  });
+
+  test('relative time control to param after constrained larger', () {
+    final relative = RelativeTimeControl(const Duration(milliseconds: 123));
+    relative.constrain(const Duration(milliseconds: 2500));
+    expect(relative.toQueryParameters, throwsA(anything));
   });
 }

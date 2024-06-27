@@ -31,10 +31,10 @@ class ServedEngine<G extends Game<G>> implements Engine<G> {
   @override
   Future<Move<G>> chooseBest(
       List<Move<G>> moves, G game, TimeControl timeControl) async {
-    final uri = Uri.http(server, '/$_sessionId/chooseBest');
+    final uri = Uri.http(
+        server, '/$_sessionId/chooseBest', timeControl.toQueryParameters());
     for (var retries = 0;; ++retries) {
       try {
-        // TODO: Pass along time control!
         final response = await http.post(uri, body: game.encode());
         return moves[int.parse(response.body)];
       } catch (e) {

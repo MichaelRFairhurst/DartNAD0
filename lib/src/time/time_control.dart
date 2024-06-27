@@ -19,6 +19,9 @@ abstract class TimeControl {
   /// This method must be called before [isExceeded] in order to start relative
   /// time control.
   void constrain(Duration? maxTime);
+
+  /// Create the HTTP query parameter for sending this [TimeControl] over http.
+  Map<String, String> toQueryParameters();
 }
 
 /// A [TimeControl] that has a move [Duration] instead of a fixed end time.
@@ -47,6 +50,17 @@ class RelativeTimeControl implements TimeControl {
 
   @override
   bool isExceeded() => isExceededFor(DateTime.now());
+
+  @override
+  String toString() => 'relative time control, $moveDuration, endtime $_endTime';
+
+  @override
+  Map<String, String> toQueryParameters() {
+    if (_endTime != null) {
+      throw 'Cannot http encode relative time control that has been started';
+    }
+    return {'reltime': moveDuration.inMilliseconds.toString()};
+  }
 }
 
 /// A [TimeControl] that has a fixed end time.
@@ -72,4 +86,13 @@ class AbsoluteTimeControl implements TimeControl {
 
   @override
   bool isExceeded() => isExceededFor(DateTime.now());
+
+  DateTime get endTime => _endTime;
+
+  @override
+  String toString() => 'absolute time control, endtime $_endTime';
+
+  @override
+  Map<String, String> toQueryParameters() =>
+      {'time': endTime.millisecondsSinceEpoch.toString()};
 }

@@ -76,8 +76,8 @@ class CliTools<G extends Game<G>> {
           engines: engines, configSpecs: configs))
       ..addCommand(Rank(startingGame, timeController,
           engines: engines, configSpecs: configs))
-      ..addCommand(ServeCommand(decoder, timeController,
-          engines: engines, configSpecs: configs));
+      ..addCommand(
+          ServeCommand(decoder, engines: engines, configSpecs: configs));
 
     // Workaround: parse command separately before running it. Command Runner
     // does not like our usage of subcommands and crashes on run() if there's a
