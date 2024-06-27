@@ -101,4 +101,3 @@ Available engines for the above commands:
   nth       Utility engine which always picks the nth move or nth-to-last move.
 ''';
 }
-

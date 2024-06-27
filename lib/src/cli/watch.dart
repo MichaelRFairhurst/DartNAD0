@@ -63,4 +63,3 @@ class WatchGame<G extends Game<G>> extends ParseConfigCommand {
     }
   }
 }
-
