@@ -24,8 +24,8 @@ class XmmCli extends CliEngine {
         help: 'max depth to search')
     ..addOption('max-time',
         abbr: 't',
-        defaultsTo: defaultConfig.maxTime.inMilliseconds.toString(),
-        help: 'max time to search, in milliseconds')
+        defaultsTo: defaultConfig.maxTime?.inMilliseconds.toString(),
+        help: 'Optional constraint to limit search below time control.')
     ..addFlag('iterative-deepening',
         defaultsTo: defaultConfig.iterativeDeepening,
         help: 'enable iterative deepening')
@@ -50,7 +50,9 @@ class XmmCli extends CliEngine {
   EngineConfig buildConfig(ArgResults results) {
     return ExpectiminimaxConfig(
       maxDepth: int.parse(results['max-depth']),
-      maxTime: Duration(milliseconds: int.parse(results['max-time'])),
+      maxTime: results['max-time'] == null
+          ? null
+          : Duration(milliseconds: int.parse(results['max-time'])),
       iterativeDeepening: results['iterative-deepening'],
       chanceNodeProbeWindow:
           ProbeWindow.values.byName(results['chance-node-probe-window']),

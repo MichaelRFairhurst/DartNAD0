@@ -48,9 +48,9 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
   // Experimental feature, can be turned on or off.
   final bool useIterativeDeepening;
 
-  /// Max time to perform a search, mostly for iterative deepening in order to
-  /// search to the maximum depth allowed by circumstance.
-  final Duration maxSearchDuration;
+  /// Max time to perform a search, optional, used to constrain search to less
+  /// than the provided TimeControl.
+  final Duration? maxSearchDuration;
 
   /// A time to abort the search, set when search begins, and checked on every
   /// iteration of the search.

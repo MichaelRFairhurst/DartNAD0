@@ -24,10 +24,12 @@ class CliTools<G extends Game<G>> {
   CliTools({
     required this.startingGame,
     required this.timeController,
-    required this.defaultXmmConfig,
-    required this.defaultMctsConfig,
+    ExpectiminimaxConfig? defaultXmmConfig,
+    MctsConfig? defaultMctsConfig,
     G Function(String)? decoder,
-  }) : decoder = decoder ?? throwingDecoder;
+  })  : decoder = decoder ?? throwingDecoder,
+        defaultXmmConfig = defaultXmmConfig ?? ExpectiminimaxConfig(),
+        defaultMctsConfig = defaultMctsConfig ?? MctsConfig();
 
   static Never throwingDecoder(String) =>
       throw UnimplementedError('no decoder specified');

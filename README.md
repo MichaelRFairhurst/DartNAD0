@@ -382,24 +382,21 @@ A simple game loop between two AIs will look like the following:
 
 ## Command line tools
 
-Specify a starting game state and default engine configuration settings to
-easily make a command line tool for playing and benchmarking your game, as well
-as serving your engine over http.
+Specify a starting game state and a time controller to easily make a command
+line tool for playing and benchmarking your game, as well as serving your engine
+over http.
+
+Optionally, you can specify engine configuration defaults as well.
 
 ```dart
 // bin/my_game.dart
 void main(List<String> args) {
   final cli = CliTool(
     startingGame: DiceGame(p1Score: 0, p2Score: 0),
-    defaultMoveTimer: const Duration(seconds: 1),
-	defaultXmmConfig(
-	  maxDepth: 20,
-	  maxTime: const Duration(seconds: 1),
-	),
-	defaultMctsConfig(
-	  maxDepth: 80,
-	  maxTime: const Duration(seconds: 1),
-	)
+    timeController: TimeController(const Duration(seconds: 1)),
+	// optional:
+	defaultXmmConfig: ExpectiminaxConfig(...),
+	defaultMctsConfig: MctsConfig(...),
   );
 
   return cli.run(args);
@@ -418,17 +415,17 @@ Basic usage:
 ```bash
 # Watch a game of AI vs AI, with searches up to 50ms in duration.
 # Note: pleasant viewership requires your game implement `toString()` :)
-dart bin/my_game.dart watch xmm --max-time=50
+dart bin/my_game.dart watch --time-control 50 xmm
 
 # Same as above but with MCTS instead of expectiminimax.
-dart bin/my_game.dart watch mcts --max-time=50
+dart bin/my_game.dart watch --time-control 50 mcts
 
 # Run 100 games, searching each move up to 8 plies in depth, and print
 # performance stats.
 dart bin/my_game.dart bench -c 100 xmm --max-depth=8
 
 # Serve your game engine over http
-dart bin/my_game.dart serve --port 8080 xmm --max-time=50
+dart bin/my_game.dart serve --port 8080 xmm
 
 # Watch your engine that's served over http play a game
 dart bin/my_game.dart watch served localhost:8080
@@ -453,8 +450,8 @@ subcommands by using the following settings:
 
 - `--max-depth` or `-d`: set maximum search depth. Prefer high and rely on
   timeouts to stop the search, unless you have disabled iterative deepening.
-- `--max-time` or `-t`: set maximum search time in ms. If you have disabled
-  iterative deepening, prefer a very large number/no timeout.
+- `--max-time` or `-t`: set maximum search time in ms. This is can be used to
+  limit search to less than available time control.
 - `--no-iterative-deepening`: Disable "iterative deepening" in favor of a fixed
   depth search. With iterative deepening enabled, the engine searches to depth
   1, then 2, etc, until either timeout or max depth is reached, the best move
@@ -485,7 +482,8 @@ well.
 - `--max-depth` or `-d`: set maximum playout depth. If the scoring function is
   unreliable without looking many moves ahead, set this high. Otherwise, a lower
   depth may reduce the amount of noise in each playout and improve the engine.
-- `--max-time` or `-t`: set maximum search time in ms.
+- `--max-time` or `-t`: set maximum search time in ms, used to limit search to
+  less than the given time control.
 
 #### UCT vs pUCT
 

@@ -19,34 +19,36 @@ class MctsCli extends CliEngine {
 
   @override
   ArgParser configureParser() => ArgParser()
-        ..addOption('max-depth',
-            abbr: 'd',
-            defaultsTo: defaultConfig.maxDepth.toString(),
-            help: 'max depth to search')
-        ..addOption('max-time',
-            abbr: 't',
-            defaultsTo: defaultConfig.maxTime.inMilliseconds.toString(),
-            help: 'max time to search, in milliseconds')
-        ..addOption('max-playouts',
-            abbr: 'p',
-            defaultsTo: defaultConfig.maxPlayouts.toString(),
-            help: 'Max playouts before aborting search')
-        ..addOption('expand-depth',
-            abbr: 'e',
-            defaultsTo: defaultConfig.expandDepth.toString(),
-            help: 'Max new deeper nodes to add to tree during expand phase')
-        ..addOption('c-uct',
-            defaultsTo: defaultConfig.cUct.toString(),
-            help: 'Constant parameter "c" for UCT selection')
-        ..addOption('c-puct',
-            defaultsTo: defaultConfig.cPuct.toString(),
-            help: 'Constant parameter "cpUCT" for pUCT selection');
+    ..addOption('max-depth',
+        abbr: 'd',
+        defaultsTo: defaultConfig.maxDepth.toString(),
+        help: 'max depth to search')
+    ..addOption('max-time',
+        abbr: 't',
+        defaultsTo: defaultConfig.maxTime?.inMilliseconds.toString(),
+        help: 'Optional constraint to limit search below time control.')
+    ..addOption('max-playouts',
+        abbr: 'p',
+        defaultsTo: defaultConfig.maxPlayouts.toString(),
+        help: 'Max playouts before aborting search')
+    ..addOption('expand-depth',
+        abbr: 'e',
+        defaultsTo: defaultConfig.expandDepth.toString(),
+        help: 'Max new deeper nodes to add to tree during expand phase')
+    ..addOption('c-uct',
+        defaultsTo: defaultConfig.cUct.toString(),
+        help: 'Constant parameter "c" for UCT selection')
+    ..addOption('c-puct',
+        defaultsTo: defaultConfig.cPuct.toString(),
+        help: 'Constant parameter "cpUCT" for pUCT selection');
 
   @override
   EngineConfig buildConfig(ArgResults results) {
     return MctsConfig(
       maxDepth: int.parse(results['max-depth']),
-      maxTime: Duration(milliseconds: int.parse(results['max-time'])),
+      maxTime: results['max-time'] == null
+          ? null
+          : Duration(milliseconds: int.parse(results['max-time'])),
       maxPlayouts: int.parse(results['max-playouts']),
       expandDepth: int.parse(results['expand-depth']),
       cUct: double.parse(results['c-uct']),

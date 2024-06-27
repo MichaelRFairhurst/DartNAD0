@@ -5,8 +5,8 @@ import 'package:dartnad0/src/game.dart';
 /// Config object for defining expectiminimax search parameters.
 class ExpectiminimaxConfig implements EngineConfig {
   const ExpectiminimaxConfig({
-    required this.maxDepth,
-    required this.maxTime,
+    this.maxDepth = 30,
+    this.maxTime,
     this.iterativeDeepening = true,
     this.chanceNodeProbeWindow = ProbeWindow.overlapping,
     this.transpositionTableSize = 1024 * 1024,
@@ -22,7 +22,10 @@ class ExpectiminimaxConfig implements EngineConfig {
   final int maxDepth;
 
   /// The maximum time to spend on any given search.
-  final Duration maxTime;
+  ///
+  /// This is optional, and only used to constrain context-provided
+  /// [TimeControl].
+  final Duration? maxTime;
 
   /// Whether to use iterative deepening (start searching at ply 1, and then
   /// increment depth by 1 and repeat, until we've reached max depth).

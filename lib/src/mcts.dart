@@ -10,10 +10,10 @@ import 'package:dartnad0/src/util.dart';
 
 class MctsConfig implements EngineConfig {
   MctsConfig({
-    required this.maxDepth,
+    this.maxDepth = 80,
     this.maxPlayouts = 1000000,
     this.expandDepth = 1000000,
-    required this.maxTime,
+    this.maxTime,
     this.cUct = 1.41,
     this.cPuct = 2.0,
   });
@@ -59,7 +59,10 @@ class MctsConfig implements EngineConfig {
   final int expandDepth;
 
   /// Duration before cutting off search.
-  final Duration maxTime;
+  ///
+  /// This is optional, and only used to constrain context-provided
+  /// [TimeControl].
+  final Duration? maxTime;
 
   @override
   Mcts<G> buildEngine<G extends Game<G>>() => Mcts<G>(Random(), this);
