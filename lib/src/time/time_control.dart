@@ -14,6 +14,12 @@ abstract class TimeControl {
   /// method, even if you pass in null.
   bool isExceeded();
 
+  /// The time that the time control expires.
+  ///
+  /// To support relative time control, you MUST call [constrain] before this
+  /// method, even if you pass in null.
+  DateTime get endTime;
+
   /// Constrain the time control to not exceed now plus the provided [maxTime].
   ///
   /// This method must be called before [isExceeded] in order to start relative
@@ -52,6 +58,10 @@ class RelativeTimeControl implements TimeControl {
   bool isExceeded() => isExceededFor(DateTime.now());
 
   @override
+  // TODO: How should we handle null here?
+  DateTime get endTime => _endTime!;
+
+  @override
   String toString() => 'relative time control, $moveDuration, endtime $_endTime';
 
   @override
@@ -87,6 +97,7 @@ class AbsoluteTimeControl implements TimeControl {
   @override
   bool isExceeded() => isExceededFor(DateTime.now());
 
+  @override
   DateTime get endTime => _endTime;
 
   @override

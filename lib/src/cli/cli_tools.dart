@@ -5,6 +5,7 @@ import 'package:dartnad0/src/cli/mcts_cli.dart';
 import 'package:dartnad0/src/cli/other_engines_cli.dart';
 import 'package:dartnad0/src/cli/rank.dart';
 import 'package:dartnad0/src/cli/served_cli.dart';
+import 'package:dartnad0/src/cli/strict_engine_cli.dart';
 import 'package:dartnad0/src/cli/watch.dart';
 import 'package:dartnad0/src/cli/xmm_cli.dart';
 import 'package:dartnad0/src/config.dart';
@@ -56,8 +57,8 @@ class CliTools<G extends Game<G>> {
     final configs = sections.skip(1).toList();
 
     final engines = {
-      'xmm': XmmCli(defaultXmmConfig),
-      'mcts': MctsCli(defaultMctsConfig),
+      'xmm': StrictEngineCli(XmmCli(defaultXmmConfig)),
+      'mcts': StrictEngineCli(MctsCli(defaultMctsConfig)),
       'served': ServedEngineCli(),
       'random': RandomEngineCli(),
       'nth': NthEngineCli(),

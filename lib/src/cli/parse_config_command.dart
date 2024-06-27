@@ -1,7 +1,9 @@
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:dartnad0/src/cli/cli_engine.dart';
+import 'package:dartnad0/src/cli/time_control_mixin.dart';
 import 'package:dartnad0/src/engine.dart';
+import 'package:dartnad0/src/time/time_controller.dart';
 
 abstract class ParseConfigCommand extends Command {
   List<List<String>> configSpecs;
@@ -45,8 +47,23 @@ ${engines.values.map((e) => e.usage).join('\n')}
     }
 
     try {
+      final TimeController? timeController;
+      if (this is TimeControlMixin) {
+        timeController = (this as TimeControlMixin).parseTimeController();
+      } else {
+        timeController = null;
+      }
+
+      EngineConfig restrictConfig(EngineConfig config) {
+        if (timeController == null) {
+          return config;
+        } else {
+          return timeController.restrictConfig(config);
+        }
+      }
+
       final configs = [
-        getPrimaryConfig(),
+        restrictConfig(getPrimaryConfig()),
         ...configSpecs.map((args) {
           if (args.first.startsWith('-')) {
             throw 'Error: Specify an engine before engine flags: "$args"';
@@ -55,7 +72,8 @@ ${engines.values.map((e) => e.usage).join('\n')}
             throw 'Error: Invalid engine name: "${args.first}"';
           }
           try {
-            return getConfigFromResults(configParser.parse(args));
+            return restrictConfig(
+                getConfigFromResults(configParser.parse(args)));
           } catch (e) {
             throw 'Error: Misconfigured engine "$args"\n\n$e';
           }
