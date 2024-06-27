@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:dartnad0/src/cli/parse_config_command.dart';
+import 'package:dartnad0/src/cli/time_control_mixin.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/time/time_controller.dart';
 import 'package:thread/thread.dart';
@@ -8,15 +9,14 @@ import 'package:dartnad0/src/elo.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/move.dart';
 
-class Rank<G extends Game<G>> extends ParseConfigCommand {
+class Rank<G extends Game<G>> extends ParseConfigCommand with TimeControlMixin {
   final name = 'rank';
   final description = 'Rank two configs in ELO, by playing a series of games'
       ' between them.';
 
   final G startingGame;
-  final TimeController timeController;
 
-  Rank(this.startingGame, this.timeController,
+  Rank(this.startingGame, TimeController timeController,
       {required super.engines, required super.configSpecs}) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '10', help: 'Maximum number of games to play');
@@ -47,9 +47,11 @@ class Rank<G extends Game<G>> extends ParseConfigCommand {
         abbr: 'r',
         help: 'Whether or not to clear cache results between games',
         defaultsTo: false);
+    addTimeControlFlags(timeController);
   }
 
   Thread startThread(List<EngineConfig> configs, Random random, bool refresh) {
+    final timeController = parseTimeController();
     return Thread((events) {
       final algs = configs.map((c) => c.buildEngine<G>()).toList();
       events.on('game', (List<int> players) async {

@@ -1,18 +1,19 @@
 import 'dart:math';
 
 import 'package:dartnad0/src/cli/parse_config_command.dart';
+import 'package:dartnad0/src/cli/time_control_mixin.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/time/time_controller.dart';
 
-class WatchGame<G extends Game<G>> extends ParseConfigCommand {
+class WatchGame<G extends Game<G>> extends ParseConfigCommand
+    with TimeControlMixin {
   final name = 'watch';
   final description = 'Run a game and print out the moves/events/positions.';
 
   final G startingGame;
-  final TimeController timeController;
 
-  WatchGame(this.startingGame, this.timeController,
+  WatchGame(this.startingGame, TimeController timeController,
       {required super.engines, required super.configSpecs}) {
     argParser.addOption('seed',
         abbr: 's', help: 'Random number generator seed.');
@@ -23,6 +24,7 @@ class WatchGame<G extends Game<G>> extends ParseConfigCommand {
         defaultsTo: 'time');
     argParser.addFlag('print-timing',
         help: 'Print timing when the game is finished.');
+    addTimeControlFlags(timeController);
   }
 
   @override
@@ -31,6 +33,7 @@ class WatchGame<G extends Game<G>> extends ParseConfigCommand {
     final printStats = argResults!['print-stats'];
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
+    final timeController = parseTimeController();
 
     final random = Random(seed);
     var engine = config.buildEngine<G>();

@@ -1,19 +1,20 @@
 import 'dart:math';
 
 import 'package:dartnad0/src/cli/parse_config_command.dart';
+import 'package:dartnad0/src/cli/time_control_mixin.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/time/time_controller.dart';
 
-class Compare<G extends Game<G>> extends ParseConfigCommand {
+class Compare<G extends Game<G>> extends ParseConfigCommand
+    with TimeControlMixin {
   final name = 'compare';
   final description = 'Compare the performance and/or decisions of two configs,'
       ' by playing a series of exactly the same games';
 
   final G startingGame;
-  final TimeController timeController;
 
-  Compare(this.startingGame, this.timeController,
+  Compare(this.startingGame, TimeController timeController,
       {required super.engines, required super.configSpecs}) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '10', help: 'How many games to play');
@@ -25,12 +26,14 @@ class Compare<G extends Game<G>> extends ParseConfigCommand {
         defaultsTo: false);
     argParser.addFlag('choices',
         help: 'Whether or not to check the choices match', defaultsTo: true);
+    addTimeControlFlags(timeController);
   }
 
   @override
   void runWithConfigs(List<EngineConfig> configs) async {
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
+    final timeController = parseTimeController();
     final count = int.parse(argResults!['count']);
     final compareChoices = argResults!['choices'];
 

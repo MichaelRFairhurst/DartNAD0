@@ -1,18 +1,19 @@
 import 'dart:math';
 
 import 'package:dartnad0/src/cli/parse_config_command.dart';
+import 'package:dartnad0/src/cli/time_control_mixin.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/time/time_controller.dart';
 
-class Benchmark<G extends Game<G>> extends ParseConfigCommand {
+class Benchmark<G extends Game<G>> extends ParseConfigCommand
+    with TimeControlMixin {
   final name = 'bench';
   final description = 'Play a series of games, tracking performance.';
 
   final G startingGame;
-  final TimeController timeController;
 
-  Benchmark(this.startingGame, this.timeController,
+  Benchmark(this.startingGame, TimeController timeController,
       {required super.engines, required super.configSpecs}) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '20', help: 'How many games to play');
@@ -22,12 +23,14 @@ class Benchmark<G extends Game<G>> extends ParseConfigCommand {
         abbr: 'r',
         help: 'Whether or not to clear cache results between games',
         defaultsTo: false);
+    addTimeControlFlags(timeController);
   }
 
   @override
   void runWithConfigs(List<EngineConfig> configs) async {
     final seed =
         argResults!['seed'] == null ? null : int.parse(argResults!['seed']);
+    final timeController = parseTimeController();
     final config = configs[0];
     final count = int.parse(argResults!['count']);
 
