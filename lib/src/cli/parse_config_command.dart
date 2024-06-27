@@ -82,6 +82,6 @@ ${engines.values.map((e) => e.usage).join('\n')}
       throw 'bad engine name ${results.command?.name}';
     }
 
-    return engineCli.buildConfig(results);
+    return engineCli.buildConfig(results.command!);
   }
 }
