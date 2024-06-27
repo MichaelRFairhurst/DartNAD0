@@ -1,13 +1,17 @@
 import 'package:args/command_runner.dart';
 import 'package:dartnad0/src/cli/bench.dart';
 import 'package:dartnad0/src/cli/compare.dart';
+import 'package:dartnad0/src/cli/mcts_cli.dart';
+import 'package:dartnad0/src/cli/other_engines_cli.dart';
 import 'package:dartnad0/src/cli/rank.dart';
+import 'package:dartnad0/src/cli/served_cli.dart';
 import 'package:dartnad0/src/cli/watch.dart';
-import 'package:dartnad0/src/mcts.dart';
-import 'package:dartnad0/src/serve/serve_command.dart';
+import 'package:dartnad0/src/cli/xmm_cli.dart';
 import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/mcts.dart';
 import 'package:dartnad0/src/perft.dart';
+import 'package:dartnad0/src/serve/serve_command.dart';
 import 'package:dartnad0/src/time/time_controller.dart';
 
 class CliTools<G extends Game<G>> {
@@ -49,21 +53,29 @@ class CliTools<G extends Game<G>> {
 
     final configs = sections.skip(1).toList();
 
+    final engines = {
+      'xmm': XmmCli(defaultXmmConfig),
+      'mcts': MctsCli(defaultMctsConfig),
+      'served': ServedEngineCli(),
+      'random': RandomEngineCli(),
+      'nth': NthEngineCli(),
+    };
+
     final commandRunner = _ListEnginesCommandRunner('dart your_wrapper.dart',
         'Pre-built CLI tools to run expectiminimax on custom games')
       ..addCommand(PerftCommand(startingGame))
       // TODO: play two AIs against each other
-      ..addCommand(
-          WatchGame(startingGame, timeController, defaultXmmConfig, defaultMctsConfig, []))
+      ..addCommand(WatchGame(startingGame, timeController,
+          engines: engines, configSpecs: []))
       // TODO: Distinguish SingleConfigCommand from MultiConfigCommand
-      ..addCommand(
-          Benchmark(startingGame,  timeController,defaultXmmConfig, defaultMctsConfig, []))
-      ..addCommand(
-          Compare(startingGame, timeController, defaultXmmConfig, defaultMctsConfig, configs))
-      ..addCommand(
-          Rank(startingGame, timeController, defaultXmmConfig, defaultMctsConfig, configs))
-      ..addCommand(
-          ServeCommand(decoder, timeController, defaultXmmConfig, defaultMctsConfig, configs));
+      ..addCommand(Benchmark(startingGame, timeController,
+          engines: engines, configSpecs: []))
+      ..addCommand(Compare(startingGame, timeController,
+          engines: engines, configSpecs: configs))
+      ..addCommand(Rank(startingGame, timeController,
+          engines: engines, configSpecs: configs))
+      ..addCommand(ServeCommand(decoder, timeController,
+          engines: engines, configSpecs: configs));
 
     // Workaround: parse command separately before running it. Command Runner
     // does not like our usage of subcommands and crashes on run() if there's a

@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'package:dartnad0/src/cli/parse_config_command.dart';
-import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
-import 'package:dartnad0/src/mcts.dart';
 import 'package:dartnad0/src/time/time_controller.dart';
 import 'package:shelf/shelf.dart';
 
@@ -45,13 +43,8 @@ class ServeCommand<G extends Game<G>> extends ParseConfigCommand {
 
   final _sessions = <String, _Session>{};
 
-  ServeCommand(
-      this.decoder,
-      this.timeController,
-      ExpectiminimaxConfig defaultXmmConfig,
-      MctsConfig defaultMctsConfig,
-      List<List<String>> configSpecs)
-      : super(defaultXmmConfig, defaultMctsConfig, configSpecs) {
+  ServeCommand(this.decoder, this.timeController,
+      {required super.engines, required super.configSpecs}) {
     argParser.addOption('port',
         abbr: 'p', defaultsTo: '8080', help: 'Port to serve this engine on.');
     argParser.addOption('keepalive',

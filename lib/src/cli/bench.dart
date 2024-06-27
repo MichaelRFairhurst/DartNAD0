@@ -2,8 +2,6 @@ import 'dart:math';
 
 import 'package:dartnad0/src/cli/parse_config_command.dart';
 import 'package:dartnad0/src/engine.dart';
-import 'package:dartnad0/src/mcts.dart';
-import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/time/time_controller.dart';
 
@@ -14,13 +12,8 @@ class Benchmark<G extends Game<G>> extends ParseConfigCommand {
   final G startingGame;
   final TimeController timeController;
 
-  Benchmark(
-      this.startingGame,
-      this.timeController,
-      ExpectiminimaxConfig defaultXmmConfig,
-      MctsConfig defaultMctsConfig,
-      List<List<String>> configSpecs)
-      : super(defaultXmmConfig, defaultMctsConfig, configSpecs) {
+  Benchmark(this.startingGame, this.timeController,
+      {required super.engines, required super.configSpecs}) {
     argParser.addOption('count',
         abbr: 'c', defaultsTo: '20', help: 'How many games to play');
     argParser.addOption('seed',
