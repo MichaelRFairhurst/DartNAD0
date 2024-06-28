@@ -267,13 +267,8 @@ class Attack implements Move<DiceBattle> {
 void main(List<String> args) {
   CliTools<DiceBattle>(
     timeController: TimeController(const Duration(milliseconds: 25)),
-    defaultXmmConfig: ExpectiminimaxConfig(
-      maxDepth: 50,
-      maxTime: Duration(milliseconds: 25),
-    ),
     defaultMctsConfig: MctsConfig(
       maxDepth: 22,
-      maxTime: Duration(milliseconds: 25),
     ),
     startingGame: DiceBattle(
       p1Turn: true,
