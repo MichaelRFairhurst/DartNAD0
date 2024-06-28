@@ -31,7 +31,6 @@ abstract class Engine<G extends Game<G>> {
 
   /// Get data from the engine about its performance.
   SearchStats get stats;
-
 }
 
 /// Base class for configuration of a specific engine.
