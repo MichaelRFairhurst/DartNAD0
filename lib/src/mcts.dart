@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:dartnad0/src/chance.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
+import 'package:dartnad0/src/mcts/stats.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/stats.dart';
 import 'package:dartnad0/src/time/time_control.dart';
@@ -73,14 +74,13 @@ class Mcts<G extends Game<G>> implements Engine<G> {
   final Random random;
 
   @override
-  // TODO: track actual MCTS stats (playouts, depth, size, ...)
-  final SearchStats stats = NullSearchStats();
+  final MctsSearchStats stats;
 
   late TimeControl timeControl;
 
   MctsNode<G, dynamic>? lastTree;
 
-  Mcts(this.random, this.config);
+  Mcts(this.random, this.config) : stats = MctsSearchStats(config.maxDepth);
 
   @override
   void clearCache() {
@@ -89,7 +89,9 @@ class Mcts<G extends Game<G>> implements Engine<G> {
 
   Future<Move<G>> chooseBest(
       List<Move<G>> moves, G game, TimeControl timeControl) async {
+    final start = DateTime.now();
     this.timeControl = timeControl..constrain(config.maxTime);
+    ++stats.searchCount;
 
     final cached = lastTree?.findChildGame(game, 2);
     final tree = cached ?? MctsMoveNode<G>(game, 0);
@@ -100,14 +102,19 @@ class Mcts<G extends Game<G>> implements Engine<G> {
       }
 
       expand(tree, config.maxDepth, config.expandDepth);
+      ++stats.samples;
     }
 
-    final bestIdx =
-        bestIdxBy<num>(moves.length, (i) => tree.getChild(i).simulations)!;
+    final bestIdx = bestIdxBy<num>(
+        moves.length, (i) => tree.getChild(i, stats).simulations)!;
+    stats.duration += DateTime.now().difference(start);
+    stats.rootSimulations += tree.simulations;
     return moves[bestIdx];
   }
 
   double expand(MctsNode<G, dynamic> tree, int depth, int expandDepth) {
+    stats.nodesSearchedByPly[depth]++;
+
     if (depth <= 0 ||
         expandDepth <= 0 ||
         tree.isTerminal ||
@@ -118,12 +125,12 @@ class Mcts<G extends Game<G>> implements Engine<G> {
     tree.simulations++;
     if (tree is MctsRandomNode<G>) {
       final pIdx = tree.chance.pickIndex(random.nextDouble());
-      final next = tree.getChild(pIdx);
+      final next = tree.getChild(pIdx, stats);
       return tree.backpropagate(expand(next, depth - 1, expandDepth));
     }
 
     if (tree is MctsMoveNode<G>) {
-      final child = tree.select(random, config);
+      final child = tree.select(random, config, stats);
       final newExpandDepth =
           child.simulations == 0 ? expandDepth - 1 : expandDepth;
 
@@ -152,9 +159,10 @@ abstract class MctsNode<G extends Game<G>, E> {
 
   double computeScore() => game.score;
 
-  MctsNode<G, dynamic> getChild(int edgeIdx) {
+  MctsNode<G, dynamic> getChild(int edgeIdx, MctsSearchStats stats) {
     final edge = edges[edgeIdx];
     if (child == null) {
+      stats.treeSize++;
       return child = walk(edge, edgeIdx);
     }
 
@@ -165,6 +173,7 @@ abstract class MctsNode<G extends Game<G>, E> {
       }
 
       if (node.sibling == null) {
+        stats.treeSize++;
         return node.sibling = walk(edge, edgeIdx);
       } else {
         node = node.sibling!;
@@ -174,16 +183,19 @@ abstract class MctsNode<G extends Game<G>, E> {
 
   static final _edgeScoreCache = <double>[];
 
-  MctsNode<G, dynamic> select(Random random, MctsConfig config) {
+  MctsNode<G, dynamic> select(
+      Random random, MctsConfig config, MctsSearchStats stats) {
     if (config.cPuct != 0) {
-      return getChild(bestIdxBy<num>(
-          edges.length,
-          (i) => getChild(i)
-              .scoreForSelect(simulations, config.cUct, config.cPuct))!);
+      return getChild(
+          bestIdxBy<num>(
+              edges.length,
+              (i) => getChild(i, stats)
+                  .scoreForSelect(simulations, config.cUct, config.cPuct))!,
+          stats);
     }
 
     if (child == null) {
-      return getChild(random.nextInt(edges.length));
+      return getChild(random.nextInt(edges.length), stats);
     }
 
     if (_edgeScoreCache.length < edges.length) {
@@ -203,7 +215,7 @@ abstract class MctsNode<G extends Game<G>, E> {
     }
 
     final bestIdx = bestIdxBy<num>(edges.length, (i) => _edgeScoreCache[i])!;
-    return getChild(bestIdx);
+    return getChild(bestIdx, stats);
   }
 
   List<E> get edges;

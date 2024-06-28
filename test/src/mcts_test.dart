@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:dartnad0/src/chance.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/mcts.dart';
+import 'package:dartnad0/src/mcts/stats.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/time/time_control.dart';
 import 'package:test/test.dart';
@@ -19,11 +20,13 @@ void main() {
     );
 
     expect(node.child, isNull);
-    final child = node.getChild(0);
+    final stats = MctsSearchStats(1);
+    final child = node.getChild(0, stats);
 
     expect(node.child, child);
     expect(node.child?.sibling, isNull);
     expect(node.child?.edgeIdx, 0);
+    expect(stats.treeSize, 1);
   });
 
   test('test move node get first child is idempotent', () {
@@ -37,13 +40,15 @@ void main() {
     );
 
     expect(node.child, isNull);
-    final child = node.getChild(0);
-    final childAgain = node.getChild(0);
+    final stats = MctsSearchStats(1);
+    final child = node.getChild(0, stats);
+    final childAgain = node.getChild(0, stats);
 
     expect(child, childAgain);
     expect(node.child, child);
     expect(node.child?.sibling, isNull);
     expect(node.child?.edgeIdx, 0);
+    expect(stats.treeSize, 1);
   });
 
   test('test move node get child 1 first', () {
@@ -60,10 +65,12 @@ void main() {
     );
 
     expect(node.child, isNull);
-    final child = node.getChild(1);
+    final stats = MctsSearchStats(1);
+    final child = node.getChild(1, stats);
 
     expect(node.child, child);
     expect(node.child?.edgeIdx, 1);
+    expect(stats.treeSize, 1);
   });
 
   test('test move node get child 1 first is idempotent', () {
@@ -80,12 +87,14 @@ void main() {
     );
 
     expect(node.child, isNull);
-    final child = node.getChild(1);
-    final childAgain = node.getChild(1);
+    final stats = MctsSearchStats(1);
+    final child = node.getChild(1, stats);
+    final childAgain = node.getChild(1, stats);
 
     expect(child, childAgain);
     expect(node.child, child);
     expect(node.child?.edgeIdx, 1);
+    expect(stats.treeSize, 1);
   });
 
   test('test move node get child 0 then 1', () {
@@ -101,12 +110,14 @@ void main() {
       0,
     );
 
-    node.getChild(0);
-    node.getChild(1);
+    final stats = MctsSearchStats(1);
+    node.getChild(0, stats);
+    node.getChild(1, stats);
 
     expect(node.child?.edgeIdx, 0);
     expect(node.child?.sibling?.edgeIdx, 1);
     expect(node.child?.sibling?.sibling, isNull);
+    expect(stats.treeSize, 2);
   });
 
   test('test move node get child 0 then 1 is idempotent', () {
@@ -122,16 +133,18 @@ void main() {
       0,
     );
 
-    final c01 = node.getChild(0);
-    final c11 = node.getChild(1);
-    final c02 = node.getChild(0);
-    final c12 = node.getChild(1);
+    final stats = MctsSearchStats(1);
+    final c01 = node.getChild(0, stats);
+    final c11 = node.getChild(1, stats);
+    final c02 = node.getChild(0, stats);
+    final c12 = node.getChild(1, stats);
 
     expect(c01, c02);
     expect(c11, c12);
     expect(node.child?.edgeIdx, 0);
     expect(node.child?.sibling?.edgeIdx, 1);
     expect(node.child?.sibling?.sibling, isNull);
+    expect(stats.treeSize, 2);
   });
 
   test('test move node get child 0 then 1 then 2', () {
@@ -150,14 +163,16 @@ void main() {
       0,
     );
 
-    node.getChild(0);
-    node.getChild(1);
-    node.getChild(2);
+    final stats = MctsSearchStats(1);
+    node.getChild(0, stats);
+    node.getChild(1, stats);
+    node.getChild(2, stats);
 
     expect(node.child?.edgeIdx, 0);
     expect(node.child?.sibling?.edgeIdx, 1);
     expect(node.child?.sibling?.sibling?.edgeIdx, 2);
     expect(node.child?.sibling?.sibling?.sibling, isNull);
+    expect(stats.treeSize, 3);
   });
 
   test('test chance node get first child', () {
@@ -168,11 +183,13 @@ void main() {
     );
 
     expect(node.child, isNull);
-    final child = node.getChild(0);
+    final stats = MctsSearchStats(1);
+    final child = node.getChild(0, stats);
 
     expect(node.child, child);
     expect(node.child?.sibling, isNull);
     expect(node.child?.edgeIdx, 0);
+    expect(stats.treeSize, 1);
   });
 
   test('test chance node get first child is idempotent', () {
@@ -183,13 +200,15 @@ void main() {
     );
 
     expect(node.child, isNull);
-    final child = node.getChild(0);
-    final childAgain = node.getChild(0);
+    final stats = MctsSearchStats(1);
+    final child = node.getChild(0, stats);
+    final childAgain = node.getChild(0, stats);
 
     expect(child, childAgain);
     expect(node.child, child);
     expect(node.child?.sibling, isNull);
     expect(node.child?.edgeIdx, 0);
+    expect(stats.treeSize, 1);
   });
 
   test('test move node get child 1 first', () {
@@ -209,10 +228,12 @@ void main() {
     );
 
     expect(node.child, isNull);
-    final child = node.getChild(1);
+    final stats = MctsSearchStats(1);
+    final child = node.getChild(1, stats);
 
     expect(node.child, child);
     expect(node.child?.edgeIdx, 1);
+    expect(stats.treeSize, 1);
   });
 
   test('test move node get child 1 first is idempotent', () {
@@ -232,13 +253,15 @@ void main() {
     );
 
     expect(node.child, isNull);
-    final child = node.getChild(1);
-    final childAgain = node.getChild(1);
+    final stats = MctsSearchStats(1);
+    final child = node.getChild(1, stats);
+    final childAgain = node.getChild(1, stats);
 
     expect(child, childAgain);
     expect(node.child, child);
     expect(node.child?.edgeIdx, 1);
     expect(node.child?.sibling, isNull);
+    expect(stats.treeSize, 1);
   });
 
   test('test move node get child 0 then 1', () {
@@ -257,12 +280,14 @@ void main() {
       ]),
     );
 
-    node.getChild(0);
-    node.getChild(1);
+    final stats = MctsSearchStats(1);
+    node.getChild(0, stats);
+    node.getChild(1, stats);
 
     expect(node.child?.edgeIdx, 0);
     expect(node.child?.sibling?.edgeIdx, 1);
     expect(node.child?.sibling?.sibling, isNull);
+    expect(stats.treeSize, 2);
   });
 
   test('test move node get child 0 then 1 is idempotent', () {
@@ -281,16 +306,18 @@ void main() {
       ]),
     );
 
-    final c01 = node.getChild(0);
-    final c11 = node.getChild(1);
-    final c02 = node.getChild(0);
-    final c12 = node.getChild(1);
+    final stats = MctsSearchStats(1);
+    final c01 = node.getChild(0, stats);
+    final c11 = node.getChild(1, stats);
+    final c02 = node.getChild(0, stats);
+    final c12 = node.getChild(1, stats);
 
     expect(c01, c02);
     expect(c11, c12);
     expect(node.child?.edgeIdx, 0);
     expect(node.child?.sibling?.edgeIdx, 1);
     expect(node.child?.sibling?.sibling, isNull);
+    expect(stats.treeSize, 2);
   });
 
   test('test move node get child 0 then 1 then 2', () {
@@ -313,14 +340,16 @@ void main() {
       ]),
     );
 
-    node.getChild(0);
-    node.getChild(1);
-    node.getChild(2);
+    final stats = MctsSearchStats(1);
+    node.getChild(0, stats);
+    node.getChild(1, stats);
+    node.getChild(2, stats);
 
     expect(node.child?.edgeIdx, 0);
     expect(node.child?.sibling?.edgeIdx, 1);
     expect(node.child?.sibling?.sibling?.edgeIdx, 2);
     expect(node.child?.sibling?.sibling?.sibling, isNull);
+    expect(stats.treeSize, 3);
   });
 
   test('test move node starting values', () {
@@ -537,7 +566,7 @@ void main() {
   }) =>
       MctsConfig(
         maxTime: Duration.zero,
-        maxDepth: 1,
+        maxDepth: 10,
         expandDepth: -1,
         maxPlayouts: -1,
         cUct: cUct,
@@ -556,7 +585,11 @@ void main() {
     node.simulations++;
 
     expect(Random(0).nextInt(2), 1);
-    expect(node.select(Random(0), testConfig(cUct: 1.41)).edgeIdx, 1);
+    expect(
+        node
+            .select(Random(0), testConfig(cUct: 1.41), MctsSearchStats(1))
+            .edgeIdx,
+        1);
   });
 
   test('test uct select ignores score', () {
@@ -571,7 +604,11 @@ void main() {
     node.simulations++;
 
     expect(Random(0).nextInt(2), 1);
-    expect(node.select(Random(0), testConfig(cUct: 1.41)).edgeIdx, 1);
+    expect(
+        node
+            .select(Random(0), testConfig(cUct: 1.41), MctsSearchStats(1))
+            .edgeIdx,
+        1);
   });
 
   test('test puct selects node by best score', () {
@@ -586,7 +623,11 @@ void main() {
 
     node.simulations++;
 
-    expect(node.select(Random(), testConfig(cpUct: 1.0)).edgeIdx, 1);
+    expect(
+        node
+            .select(Random(), testConfig(cpUct: 1.0), MctsSearchStats(1))
+            .edgeIdx,
+        1);
   });
 
   test('test puct selects node by best expected value', () {
@@ -602,7 +643,11 @@ void main() {
 
     node.simulations++;
 
-    expect(node.select(Random(), testConfig(cpUct: 1.0)).edgeIdx, 2);
+    expect(
+        node
+            .select(Random(), testConfig(cpUct: 1.0), MctsSearchStats(1))
+            .edgeIdx,
+        2);
   });
 
   test('test expand, uct style', () {
@@ -790,7 +835,7 @@ void main() {
       }
     }
 
-    final expanded = node.getChild(1);
+    final expanded = node.getChild(1, MctsSearchStats(1));
     expect(expanded.simulations, equals(1));
     expect(expanded.child, isNotNull);
     expect(expanded.child!.simulations, equals(1));
