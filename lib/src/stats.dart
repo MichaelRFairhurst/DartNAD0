@@ -91,8 +91,8 @@ class SearchStats {
     ttNoFirstMove -= other.ttNoFirstMove;
     int depthDiff = _maxDepth - other._maxDepth;
     for (int i = depthDiff; i < _maxDepth; ++i) {
-      cutoffsByPly[i] -= other.cutoffsByPly[i + depthDiff];
-      nodesSearchedByPly[i] -= other.nodesSearchedByPly[i + depthDiff];
+      cutoffsByPly[i] -= other.cutoffsByPly[i - depthDiff];
+      nodesSearchedByPly[i] -= other.nodesSearchedByPly[i - depthDiff];
     }
   }
 
