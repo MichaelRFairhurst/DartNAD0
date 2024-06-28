@@ -33,5 +33,5 @@ class RandomEngine<G extends Game<G>> extends Engine<G> {
   }
 
   @override
-  final stats = SearchStats(1);
+  final stats = NullSearchStats();
 }

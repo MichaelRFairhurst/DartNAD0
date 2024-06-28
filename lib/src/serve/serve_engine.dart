@@ -23,7 +23,7 @@ class ServedEngine<G extends Game<G>> implements Engine<G> {
 
   @override
   // TODO: Decide how to handle this & other types of engine stats.
-  final stats = SearchStats(1);
+  final stats = NullSearchStats();
 
   ServedEngine(this.server)
       : _sessionId = Random().nextInt(4294967296).toRadixString(16);

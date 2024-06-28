@@ -1,10 +1,12 @@
 import 'dart:math';
 
+import 'package:dartnad0/src/stats.dart';
+
 /// A collection of metrics about search performance.
 ///
 /// Note, ensure you initialize this with the proper depth!
-class SearchStats {
-  SearchStats(this._maxDepth)
+class XmmSearchStats implements SearchStats {
+  XmmSearchStats(this._maxDepth)
       : cutoffsByPly = List<int>.filled(_maxDepth, 0, growable: false),
         nodesSearchedByPly =
             List<int>.filled(_maxDepth + 1, 0, growable: false);
@@ -56,7 +58,7 @@ class SearchStats {
   /// and misses, etc) to these stats.
   ///
   /// This will mutate the current instance but not the provided SearchStats.
-  void add(SearchStats other) {
+  void add(XmmSearchStats other) {
     if (other._maxDepth > _maxDepth) {
       throw 'Cannot add provided stats, depth exceeds current stats.';
     }
@@ -77,8 +79,8 @@ class SearchStats {
   /// Subtract the [other] search stats from these stats, to get comparative
   /// numbers between them, and return the result in a new instance.
   ///
-  /// This will mutate the current instance but not the provided SearchStats.
-  void subtract(SearchStats other) {
+  /// This will mutate the current instance but not the provided XmmSearchStats.
+  void subtract(XmmSearchStats other) {
     if (other._maxDepth > _maxDepth) {
       throw 'Cannot subtract provided stats, depth exceeds current stats.';
     }
@@ -100,8 +102,8 @@ class SearchStats {
   /// between them, and return the result in a new instance.
   ///
   /// Does not mutate either instance.
-  SearchStats operator +(SearchStats other) {
-    return SearchStats(max(_maxDepth, other._maxDepth))
+  XmmSearchStats operator +(XmmSearchStats other) {
+    return XmmSearchStats(max(_maxDepth, other._maxDepth))
       ..add(this)
       ..add(other);
   }
@@ -109,16 +111,16 @@ class SearchStats {
   /// Negate these stats, and return the result in a new instance.
   ///
   /// Does not mutate this instance.
-  SearchStats operator -() {
-    return SearchStats(_maxDepth)..subtract(this);
+  XmmSearchStats operator -() {
+    return XmmSearchStats(_maxDepth)..subtract(this);
   }
 
   /// Subtract the [other] search stats from these stats, to get comparative
   /// numbers between them, and return the result in a new instance.
   ///
   /// Does not mutate either instance.
-  SearchStats operator -(SearchStats other) {
-    return SearchStats(max(_maxDepth, other._maxDepth))
+  XmmSearchStats operator -(XmmSearchStats other) {
+    return XmmSearchStats(max(_maxDepth, other._maxDepth))
       ..add(this)
       ..subtract(other);
   }

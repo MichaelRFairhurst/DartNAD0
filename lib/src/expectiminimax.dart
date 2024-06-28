@@ -4,10 +4,10 @@ import 'package:dartnad0/src/config.dart';
 import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/move.dart';
-import 'package:dartnad0/src/stats.dart';
 import 'package:dartnad0/src/time/time_control.dart';
 import 'package:dartnad0/src/transposition.dart';
 import 'package:dartnad0/src/util.dart';
+import 'package:dartnad0/src/xmm/stats.dart';
 
 class Expectiminimax<G extends Game<G>> implements Engine<G> {
   Expectiminimax({
@@ -17,7 +17,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
             TranspositionTable<G>(config.transpositionTableSize),
         killerMoves =
             List<Move<G>?>.filled(config.maxDepth, null, growable: false),
-        stats = SearchStats(config.maxDepth),
+        stats = XmmSearchStats(config.maxDepth),
         maxDepth = config.maxDepth,
         chanceNodeProbeWindow = config.chanceNodeProbeWindow,
         useIterativeDeepening = config.iterativeDeepening,
@@ -27,7 +27,9 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
 
   final List<Move<G>?> killerMoves;
   final TranspositionTable<G> transpositionTable;
-  final SearchStats stats;
+
+  @override
+  final XmmSearchStats stats;
 
   // For internal development only.
   dynamic _debugSetting;

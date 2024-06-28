@@ -71,12 +71,16 @@ class MctsConfig implements EngineConfig {
 class Mcts<G extends Game<G>> implements Engine<G> {
   final MctsConfig config;
   final Random random;
-  final SearchStats stats;
+
+  @override
+  // TODO: track actual MCTS stats (playouts, depth, size, ...)
+  final SearchStats stats = NullSearchStats();
+
   late TimeControl timeControl;
 
   MctsNode<G, dynamic>? lastTree;
 
-  Mcts(this.random, this.config) : stats = SearchStats(config.maxDepth);
+  Mcts(this.random, this.config);
 
   @override
   void clearCache() {
