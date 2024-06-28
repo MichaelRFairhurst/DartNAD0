@@ -578,8 +578,9 @@ void main(List<String> args) {
   CliTools<Backgammon>(
     timeController: const TimeController(Duration(milliseconds: 25)),
     defaultMctsConfig: MctsConfig(
-      maxDepth: 40,
+      maxDepth: 110,
       cUct: 0.8,
+      cPuct: 0.0,
     ),
     startingGame: Backgammon(
       points: startingBoard,
