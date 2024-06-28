@@ -66,15 +66,15 @@ class TranspositionTable<G extends Game<G>> {
         return oldScore;
       } else {
         final moveScore = ifAbsent(entry.moveIdx);
-		var maxScore = _maxScoreFor(moveScore.score, beta: beta);
-		var minScore = _minScoreFor(moveScore.score, alpha: alpha);
+        var maxScore = _maxScoreFor(moveScore.score, beta: beta);
+        var minScore = _minScoreFor(moveScore.score, alpha: alpha);
 
         // Recursion may have replaced this bucket, we can only keep min/max
-		// if it applies to the current game and we have the *same* work.
-		if (_isSame(bucket, game, hash) && entry.work == work) {
-		  maxScore ??= entry.maxScore;
-		  minScore ??= entry.minScore;
-		}
+        // if it applies to the current game and we have the *same* work.
+        if (_isSame(bucket, game, hash) && entry.work == work) {
+          maxScore ??= entry.maxScore;
+          minScore ??= entry.minScore;
+        }
 
         // Mutate existing to avoid thrashing GC.
         if (!game.isMaxing) {
@@ -280,6 +280,6 @@ class _PositionData {
 
   @override
   String toString() {
-	return '($hash: min $minScore max $maxScore, work $work hashmove $moveIdx)';
+    return '($hash: min $minScore max $maxScore, work $work hashmove $moveIdx)';
   }
 }

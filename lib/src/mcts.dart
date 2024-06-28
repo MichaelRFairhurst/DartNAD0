@@ -85,7 +85,7 @@ class Mcts<G extends Game<G>> implements Engine<G> {
 
   Future<Move<G>> chooseBest(
       List<Move<G>> moves, G game, TimeControl timeControl) async {
-	this.timeControl = timeControl..constrain(config.maxTime);
+    this.timeControl = timeControl..constrain(config.maxTime);
 
     final cached = lastTree?.findChildGame(game, 2);
     final tree = cached ?? MctsMoveNode<G>(game, 0);
