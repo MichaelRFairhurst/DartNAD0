@@ -4,6 +4,7 @@ import 'package:dartnad0/src/engine.dart';
 import 'package:dartnad0/src/game.dart';
 import 'package:dartnad0/src/move.dart';
 import 'package:dartnad0/src/stats.dart';
+import 'package:dartnad0/src/time/strict_time_stats.dart';
 import 'package:dartnad0/src/time/time_control.dart';
 import 'package:thread/thread.dart';
 
@@ -33,6 +34,7 @@ class StrictEngineWrapper<G extends Game<G>> implements Engine<G> {
   Future<Move<G>> chooseBest(
       List<Move<G>> moves, G game, TimeControl timeControl) {
     timeControl.constrain(null);
+    ++stats.searchCount;
     final thread = _getThread();
     final completer = Completer<Move<G>>();
 
@@ -55,6 +57,7 @@ class StrictEngineWrapper<G extends Game<G>> implements Engine<G> {
       thread.stop();
       thread.events?.receivePort.close();
       _engineThread = null;
+      ++stats.killedSearches;
       _getThread();
       completer.complete(moves[0]);
     });
@@ -73,8 +76,7 @@ class StrictEngineWrapper<G extends Game<G>> implements Engine<G> {
   }
 
   @override
-  // TODO: implement stats
-  SearchStats get stats => throw UnimplementedError();
+  final StrictTimeStats stats = StrictTimeStats();
 
   Thread _getThread() => _engineThread ??= Thread((events) {
         final engine = config.buildEngine<G>();

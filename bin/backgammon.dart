@@ -80,6 +80,18 @@ class Backgammon extends Game<Backgammon> {
   final int die4;
 
   @override
+  String encode() => [
+        player1 ? 1 : 0,
+        ...points,
+        p1Bar,
+        p2Bar,
+        die1,
+        die2,
+        die3,
+        die4,
+      ].join(',');
+
+  @override
   List<Move<Backgammon>> getMoves() {
     // Victory condition
     if (!points.any((point) => point < 0) ||
@@ -592,5 +604,19 @@ void main(List<String> args) {
       die3: 0,
       die4: 0,
     ),
+    decoder: (str) {
+      final list = str.split(',').map(int.parse).toList();
+      final result = Backgammon(
+        player1: list[0] == 1,
+        points: list.skip(1).take(boardSize).toList(growable: false),
+        p1Bar: list[boardSize + 1],
+        p2Bar: list[boardSize + 2],
+        die1: list[boardSize + 3],
+        die2: list[boardSize + 4],
+        die3: list[boardSize + 5],
+        die4: list[boardSize + 6],
+      );
+      return result;
+    },
   ).run(args);
 }
