@@ -588,7 +588,10 @@ class AbandonTurn implements Move<Backgammon> {
 
 void main(List<String> args) {
   CliTools<Backgammon>(
-    timeController: const TimeController(Duration(milliseconds: 25)),
+    timeController: const TimeController(
+      Duration(milliseconds: 25),
+      strictTimeBuffer: Duration(milliseconds: 10),
+    ),
     defaultMctsConfig: MctsConfig(
       maxDepth: 110,
       cUct: 0.8,
