@@ -128,22 +128,20 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
     final chance = move.perform(game);
     if (!useAlphaBeta || (alpha < -1.0 && beta > 1.0) || depth <= 1) {
       stats.fwChanceSearches++;
-      return chance
-          .expectedValue((g) => checkScoreGame(g, depth - 1, -2.0, 2.0));
+      return chance.expectedValue((g) => checkScoreGame(g, depth, -2.0, 2.0));
     } else if (!useStarMinimax) {
       if (chance.possibilities.length > 1) {
         stats.fwChanceSearches++;
       }
       alpha = chance.possibilities.length == 1 ? alpha : -2.0;
       beta = chance.possibilities.length == 1 ? beta : 2.0;
-      return chance
-          .expectedValue((g) => checkScoreGame(g, depth - 1, alpha, beta));
+      return chance.expectedValue((g) => checkScoreGame(g, depth, alpha, beta));
     }
 
     if (chance.possibilities.length == 1) {
       // Optimization: skip all the below float math for this simple case.
       return checkScoreGame(
-          chance.possibilities.single.outcome, depth - 1, alpha, beta);
+          chance.possibilities.single.outcome, depth, alpha, beta);
     }
 
     final probeChanceNodes =
@@ -170,7 +168,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
           'sumUB $sumUB > alpha $alpha, but we were told to alpha cutoff');
       assert(() {
         final checkScore =
-            chance.expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
+            chance.expectedValue((g) => negaScoreGame(g, depth, -2.0, 2.0));
         assert(checkScore <= alpha,
             '$sumUB is <= $alpha, but real score is $checkScore');
         return true;
@@ -188,7 +186,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
           'sumLB $sumLB < beta $beta, but we were told to beta cutoff');
       assert(() {
         final checkScore =
-            chance.expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
+            chance.expectedValue((g) => negaScoreGame(g, depth, -2.0, 2.0));
         assert(checkScore >= beta,
             '$sumUB is >= $beta, but real score is $checkScore');
         return true;
@@ -240,7 +238,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
           // now, we just skip, though, we may be able to do something smarter.
           if (ubSearchBottom < betaP) {
             final ubSearch =
-                checkScoreGame(p.outcome, depth - 1, ubSearchBottom, betaP);
+                checkScoreGame(p.outcome, depth, ubSearchBottom, betaP);
             sumUB += (ubSearch - scoresUB[i]) * p.probability;
             scoresUB[i] = ubSearch;
             if (ubSearch >= ubSearchBottom) {
@@ -272,7 +270,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
           // now, we just skip, though, we may be able to do something smarter.
           if (alphaP < lbSearchTop) {
             final lbSearch =
-                checkScoreGame(p.outcome, depth - 1, alphaP, lbSearchTop);
+                checkScoreGame(p.outcome, depth, alphaP, lbSearchTop);
             sumLB -= scoresLB[i] * p.probability;
             scoresLB[i] = max(scoresLB[i], lbSearch);
             sumLB += scoresLB[i] * p.probability;
@@ -290,8 +288,8 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
         if (sumUB <= alpha) {
           stats.cutoffsByPly[depth]++;
           assert(() {
-            final checkScore = chance
-                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore =
+                chance.expectedValue((g) => negaScoreGame(g, depth, -2.0, 2.0));
             assert(checkScore - 0.000001 <= alpha,
                 '$sumUB is <= $alpha, but real score is $checkScore');
             return true;
@@ -300,8 +298,8 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
         } else if (sumLB >= beta) {
           stats.cutoffsByPly[depth]++;
           assert(() {
-            final checkScore = chance
-                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore =
+                chance.expectedValue((g) => negaScoreGame(g, depth, -2.0, 2.0));
             assert(checkScore + 0.000001 >= beta,
                 '$sumUB is >= $beta, but real score is $checkScore');
             return true;
@@ -366,7 +364,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
 
         assert((alpha - sum - worstAlpha * future) / p.probability < -1);
         assert((beta - sum - worstBeta * future) / p.probability > 1);
-        sum += checkScoreGame(p.outcome, depth - 1, -2.0, 2.0) * p.probability;
+        sum += checkScoreGame(p.outcome, depth, -2.0, 2.0) * p.probability;
         continue;
       }
 
@@ -393,8 +391,8 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
         betaP = (beta - sum - worstBeta * future) / p.probability + 0.0000001;
       }
 
-      final score = checkScoreGame(
-          p.outcome, depth - 1, max(-2.0, alphaP), min(2.0, betaP));
+      final score =
+          checkScoreGame(p.outcome, depth, max(-2.0, alphaP), min(2.0, betaP));
 
       if (probeChanceNodes) {
         assert(score + 0.000001 >= scoresLB[i],
@@ -408,8 +406,8 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
           assert(sumUB <= alpha,
               'sumUB $sumUB <= alpha $alpha, but $score is not <= $alphaP');
           assert(() {
-            final checkScore = chance
-                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore =
+                chance.expectedValue((g) => negaScoreGame(g, depth, -2.0, 2.0));
             assert(checkScore <= alpha,
                 '$sumUB is <= $alpha, but real score is $checkScore');
             return true;
@@ -423,8 +421,8 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
           assert(sumLB >= beta,
               'sumLB $sumLB >= beta $beta, but $score is not >= $betaP');
           assert(() {
-            final checkScore = chance
-                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore =
+                chance.expectedValue((g) => negaScoreGame(g, depth, -2.0, 2.0));
             assert(checkScore >= alpha,
                 '$sumUB is >= $beta, but real score is $checkScore');
             return true;
@@ -445,8 +443,8 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
       if (!probeChanceNodes) {
         if (score <= alphaP) {
           assert(() {
-            final checkScore = chance
-                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore =
+                chance.expectedValue((g) => negaScoreGame(g, depth, -2.0, 2.0));
             assert(checkScore <= alpha, '$checkScore is not <= $alpha');
             assert(maxScore <= alpha, '$maxScore is not <= $alpha');
             return true;
@@ -455,8 +453,8 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
           return maxScore;
         } else if (score >= betaP) {
           assert(() {
-            final checkScore = chance
-                .expectedValue((g) => negaScoreGame(g, depth - 1, -2.0, 2.0));
+            final checkScore =
+                chance.expectedValue((g) => negaScoreGame(g, depth, -2.0, 2.0));
             assert(checkScore >= beta, '$checkScore is not >= $beta');
             assert(maxScore >= beta, '$maxScore is not >= $beta');
             return true;
@@ -478,7 +476,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
   double negaScoreGame(G game, int depth, double alpha, double beta) {
     if (game.isMaxing != _isMaxing) {
       _isMaxing = !_isMaxing;
-      final score = -negaScoreGame(game, depth, -beta, -alpha);
+      final score = -negaScoreGame(game, depth - 1, -beta, -alpha);
       assert(_isMaxing == game.isMaxing);
       _isMaxing = !_isMaxing;
       return score;
@@ -533,8 +531,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
 
       var maxScore = -2.0;
       if (firstMoveIdx != null && firstMoveIdx < moves.length) {
-        final score =
-            scoreMove(moves[firstMoveIdx], game, depth - 1, alpha, beta);
+        final score = scoreMove(moves[firstMoveIdx], game, depth, alpha, beta);
         if (score >= beta && useAlphaBeta) {
           stats.cutoffsByPly[depth]++;
           return moveScore(score: score, moveIdx: firstMoveIdx);
@@ -549,7 +546,7 @@ class Expectiminimax<G extends Game<G>> implements Engine<G> {
           continue;
         }
         final move = moves[i];
-        final score = scoreMove(move, game, depth - 1, alpha, beta);
+        final score = scoreMove(move, game, depth, alpha, beta);
         if (score > maxScore) {
           bestMove = i;
         }
